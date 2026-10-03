@@ -1,0 +1,13 @@
+{"width":1440,"height":900,"steps":[
+ {"go":"/fonts/?view=list","ms":1200},
+ {"eval":"(()=>{const r=[...document.querySelectorAll('.list .row[data-path]')][0]; r.querySelector('.hit').click(); return r.dataset.path})()"},{"wait":1500},
+ {"eval":"[document.querySelector('.pane .name')?.textContent, document.querySelector('.pane .fv-family')?.textContent, document.querySelector('.pane .fv-meta')?.textContent].join(' | ')"},
+ {"shot":"f-pane"},
+ {"go":"/fonts/?view=list","ms":1000},
+ {"eval":"(()=>{const r=[...document.querySelectorAll('.list .row[data-path]')].find(r=>r.dataset.path.includes('Noto')); r.querySelector('.hit').click(); return r.dataset.path})()"},{"wait":1500},
+ {"eval":"document.querySelector('.pane .fv-family')?.textContent + ' axes=' + (document.querySelectorAll('.pane .axis').length)"},
+ {"shot":"f-cjk"},
+ {"click":".pane [title^='全屏']","ms":1200},
+ {"eval":"(()=>{const b=[...document.querySelectorAll('.pane button, .pane .seg button')].find(b=>/字符/.test(b.textContent||'')); b?.click(); return b? 'chars tab':'no tab'})()"},{"wait":600},
+ {"shot":"f-chars"}
+]}

@@ -19,6 +19,7 @@
   const loadCode = () => import("./CodeView.svelte");
   const loadVideo = () => import("./VideoPlayer.svelte");
   const loadAudio = () => import("./AudioPlayer.svelte");
+  const loadFont = () => import("./FontView.svelte");
   const src = $derived(content.src);
   const text = $derived(content.text);
   const html = $derived(content.html);
@@ -50,11 +51,6 @@
     }
   }
 
-  // Font preview controls
-  let fontSample = $state("");
-  let fontSize = $state(32);
-  let fontWeight = $state(400);
-  const fontFamily = `dufs-font-${Math.random().toString(36).slice(2, 8)}`;
 </script>
 
 {#if loading && !src && !text && !html}
@@ -102,22 +98,7 @@
 {:else if mode === "text"}
   {#await loadCode() then m}<m.default {item} {text} {variant} />{/await}
 {:else if mode === "font"}
-  <div class="font">
-    <div class="sample" style={`font-family:"${fontFamily}";font-size:${fontSize}px;font-weight:${fontWeight}`}>
-      {fontSample || "The quick brown fox jumps over the lazy dog. 0123456789 你好，世界。"}
-    </div>
-    <input class="input" placeholder="输入文字预览…" bind:value={fontSample} />
-    <label class="slider">字号 <span class="num">{fontSize}px</span>
-      <input type="range" min="8" max="96" bind:value={fontSize} />
-    </label>
-    <label class="slider">字重 <span class="num">{fontWeight}</span>
-      <input type="range" min="100" max="900" step="100" bind:value={fontWeight} />
-    </label>
-    {#if src}
-      <!-- eslint-disable-next-line -->
-      {@html `<style>@font-face { font-family: "${fontFamily}"; src: url("${src}"); }</style>`}
-    {/if}
-  </div>
+  {#await loadFont() then m}<m.default {item} {src} {variant} />{/await}
 {:else}
   <div class="hint">
     <Icon name="file" size={28} stroke={1.5} />
@@ -256,25 +237,4 @@
     padding: var(--s-4);
   }
 
-  .sample {
-    padding: var(--s-4);
-    border-radius: var(--r-md);
-    background: var(--surface);
-    line-height: 1.4;
-    text-align: center;
-    overflow-wrap: anywhere;
-  }
-
-  .slider {
-    display: flex;
-    align-items: center;
-    gap: var(--s-2);
-    color: var(--text-2);
-    font-size: var(--fs-2);
-  }
-
-  .slider input {
-    flex: 1;
-    accent-color: var(--accent);
-  }
 </style>
