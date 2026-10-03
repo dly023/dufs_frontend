@@ -1,0 +1,149 @@
+/*
+ * Design tokens. Components reference these only — no raw colors, sizes or
+ * durations elsewhere. Colors are OKLCH so light/dark share one hue logic.
+ */
+:root {
+  /* ── Hue ── one knob for the whole accent family */
+  --accent-h: 215;
+  --neutral-h: 255;
+
+  /* ── Neutrals (light) ── */
+  --bg: oklch(0.995 0.001 var(--neutral-h));
+  --chrome: oklch(0.975 0.003 var(--neutral-h));
+  --surface: oklch(1 0 0);
+  --fill: oklch(0.955 0.004 var(--neutral-h));
+  --fill-strong: oklch(0.925 0.005 var(--neutral-h));
+  --border: oklch(0.915 0.004 var(--neutral-h));
+  --border-strong: oklch(0.86 0.006 var(--neutral-h));
+  --text: oklch(0.22 0.008 var(--neutral-h));
+  --text-2: oklch(0.46 0.01 var(--neutral-h));
+  --text-3: oklch(0.62 0.008 var(--neutral-h));
+
+  /* ── Accent ── */
+  --accent: oklch(0.6 0.135 var(--accent-h));
+  --accent-ink: oklch(0.99 0.01 var(--accent-h));
+  --accent-text: oklch(0.52 0.12 var(--accent-h));
+  --accent-soft: oklch(0.6 0.135 var(--accent-h) / 0.1);
+  --accent-ring: oklch(0.6 0.135 var(--accent-h) / 0.35);
+
+  /* ── Semantic ── */
+  --danger: oklch(0.58 0.19 25);
+  --danger-soft: oklch(0.58 0.19 25 / 0.1);
+  --success: oklch(0.6 0.13 155);
+  --warning: oklch(0.72 0.14 70);
+
+  /* Inverted surface (toasts, selection dock): always high contrast. */
+  --inverse: oklch(0.24 0.01 var(--neutral-h));
+  --inverse-text: oklch(0.97 0.003 var(--neutral-h));
+  --inverse-fill: oklch(1 0 0 / 0.1);
+
+  /* Reader stage (always dark, theme independent) */
+  --stage: oklch(0.13 0.004 var(--neutral-h));
+  --glass: oklch(0.2 0.006 var(--neutral-h) / 0.72);
+
+  /* ── Type ── */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --fs-1: 0.6875rem; /* 11 meta */
+  --fs-2: 0.75rem; /* 12 secondary */
+  --fs-3: 0.8125rem; /* 13 ui */
+  --fs-4: 0.875rem; /* 14 body */
+  --fs-5: 1rem; /* 16 heading */
+  --fs-6: 1.25rem; /* 20 title */
+
+  /* ── Space (4px grid) ── */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --gutter: var(--s-5);
+
+  /* ── Size ── */
+  --h-sm: 28px;
+  --h-md: 32px;
+  --h-lg: 36px;
+  --topbar-h: 52px;
+  --sidebar-w: 240px;
+
+  /* ── Radius ── */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-full: 999px;
+
+  /* ── Elevation ── */
+  --shadow-1: 0 1px 2px oklch(0.2 0.01 var(--neutral-h) / 0.06);
+  --shadow-2: 0 1px 2px oklch(0.2 0.01 var(--neutral-h) / 0.06),
+    0 8px 24px -4px oklch(0.2 0.01 var(--neutral-h) / 0.14);
+  --shadow-3: 0 2px 4px oklch(0.2 0.01 var(--neutral-h) / 0.06),
+    0 24px 60px -8px oklch(0.2 0.01 var(--neutral-h) / 0.28);
+
+  /* ── Motion ── */
+  --t-1: 90ms;
+  --t-2: 160ms;
+  --t-3: 240ms;
+  --t-4: 360ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Gentle overshoot; falls back to ease-out where linear() is unsupported. */
+  --ease-spring: var(--ease-out);
+
+  color-scheme: light;
+}
+
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --ease-spring: linear(
+      0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.4%, 1.067, 1.099 24.3%,
+      1.104 26.2%, 1.098 28.4%, 1.042 34.7%, 1.012 38.3%, 0.997 43.1%, 0.996 51.6%, 1
+    );
+  }
+}
+
+.dark {
+  --bg: oklch(0.175 0.004 var(--neutral-h));
+  --chrome: oklch(0.155 0.004 var(--neutral-h));
+  --surface: oklch(0.215 0.005 var(--neutral-h));
+  --fill: oklch(0.235 0.005 var(--neutral-h));
+  --fill-strong: oklch(0.28 0.006 var(--neutral-h));
+  --border: oklch(0.265 0.005 var(--neutral-h));
+  --border-strong: oklch(0.33 0.006 var(--neutral-h));
+  --text: oklch(0.95 0.003 var(--neutral-h));
+  --text-2: oklch(0.74 0.006 var(--neutral-h));
+  --text-3: oklch(0.56 0.006 var(--neutral-h));
+
+  --accent: oklch(0.78 0.12 var(--accent-h));
+  --accent-ink: oklch(0.2 0.03 var(--accent-h));
+  --accent-text: oklch(0.8 0.11 var(--accent-h));
+  --accent-soft: oklch(0.78 0.12 var(--accent-h) / 0.13);
+  --accent-ring: oklch(0.78 0.12 var(--accent-h) / 0.4);
+
+  --danger: oklch(0.7 0.17 25);
+  --danger-soft: oklch(0.7 0.17 25 / 0.14);
+  --success: oklch(0.74 0.13 155);
+
+  --inverse: oklch(0.94 0.003 var(--neutral-h));
+  --inverse-text: oklch(0.2 0.006 var(--neutral-h));
+  --inverse-fill: oklch(0 0 0 / 0.07);
+
+  --shadow-1: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-2: 0 0 0 1px oklch(1 0 0 / 0.06), 0 8px 24px -4px oklch(0 0 0 / 0.5);
+  --shadow-3: 0 0 0 1px oklch(1 0 0 / 0.07), 0 24px 60px -8px oklch(0 0 0 / 0.6);
+
+  color-scheme: dark;
+}
+
+.oled {
+  --bg: oklch(0 0 0);
+  --chrome: oklch(0 0 0);
+  --surface: oklch(0.14 0.003 var(--neutral-h));
+  --fill: oklch(0.17 0.004 var(--neutral-h));
+  --fill-strong: oklch(0.22 0.005 var(--neutral-h));
+  --border: oklch(0.2 0.004 var(--neutral-h));
+  --border-strong: oklch(0.27 0.005 var(--neutral-h));
+}

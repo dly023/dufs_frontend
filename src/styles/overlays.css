@@ -1,0 +1,277 @@
+/* Layers above the shell: modals, palette, toasts, selection dock, uploads. */
+
+/* ── Modal ── */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: var(--s-4);
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.15 0.01 var(--neutral-h) / 0.42);
+  animation: fade-in var(--t-2) var(--ease);
+  cursor: default;
+}
+
+.modal-card {
+  position: relative;
+  width: min(400px, 100%);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-3);
+  animation: modal-in var(--t-3) var(--ease-out);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: -4px -8px -4px 0;
+}
+
+.modal-head h2 {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-5);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-msg {
+  color: var(--text-2);
+  font-size: var(--fs-4);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s-2);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ── Toasts ── */
+/* Feedback appears where attention already is: just under the top bar.
+   Phones keep it at the bottom, where thumbs and eyes are. */
+.toasts {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--topbar-h) + 10px);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .toasts {
+    top: auto;
+    bottom: max(var(--s-5), env(safe-area-inset-bottom));
+    flex-direction: column-reverse;
+  }
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 8px 8px 14px;
+  border-radius: var(--r-md);
+  background: var(--inverse);
+  color: var(--inverse-text);
+  box-shadow: var(--shadow-2);
+  font-size: var(--fs-3);
+  pointer-events: auto;
+  animation: toast-in var(--t-3) var(--ease-spring);
+}
+
+.toast:not(:has(.toast-action)) {
+  padding-right: 14px;
+}
+
+.toast > svg {
+  flex: 0 0 auto;
+}
+
+.toast.is-success > svg {
+  color: var(--success);
+}
+
+.toast.is-error > svg {
+  color: var(--danger);
+}
+
+.toast.is-warning > svg {
+  color: var(--warning);
+}
+
+.toast-action {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  background: var(--inverse-fill);
+  color: var(--inverse-text);
+  font-size: var(--fs-2);
+  font-weight: 600;
+}
+
+.toast-action:hover {
+  background: color-mix(in oklch, var(--inverse-fill), var(--inverse-text) 10%);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+  }
+}
+
+@media (max-width: 640px) {
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.97);
+    }
+  }
+}
+
+/* ── Loading bar (compositor-only: transform on a pseudo element) ── */
+.loading-bar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 5;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.loading-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: loading-slide 1s var(--ease) infinite;
+}
+
+@keyframes loading-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* ── Drop overlay ── */
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: var(--s-6);
+  background: color-mix(in oklch, var(--bg) 82%, transparent);
+  pointer-events: none;
+  animation: fade-in var(--t-2) var(--ease);
+}
+
+.drop-overlay > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  width: min(480px, 100%);
+  padding: var(--s-8) var(--s-6);
+  border: 1.5px dashed var(--accent);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: var(--fs-4);
+  box-shadow: var(--shadow-3);
+  animation: modal-in var(--t-3) var(--ease-spring);
+}
+
+.drop-overlay svg {
+  color: var(--accent-text);
+}
+
+.drop-overlay strong {
+  color: var(--text);
+  font-size: var(--fs-5);
+  font-weight: 600;
+}
+
+/* ── Empty / error state ── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  max-width: 360px;
+  margin: 12vh auto 0;
+  padding: var(--s-6);
+  text-align: center;
+  color: var(--text-2);
+  animation: fade-in var(--t-3) var(--ease);
+}
+
+.empty-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--s-2);
+  border-radius: var(--r-lg);
+  background: var(--fill);
+  color: var(--text-3);
+}
+
+.empty strong {
+  color: var(--text);
+  font-size: var(--fs-4);
+  font-weight: 600;
+}
+
+.empty p {
+  font-size: var(--fs-3);
+  color: var(--text-3);
+}
+
+.empty-actions {
+  display: flex;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}

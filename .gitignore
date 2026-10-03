@@ -1,0 +1,33 @@
+# Node
+node_modules/
+
+# Logs
+*.log
+nohup.out
+
+# Temp
+*.tmp
+*.bak
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Large files
+*.zip
+*.zip.html
+
+# Secrets
+.env
+
+# AI / session docs (keep local only, do not publish)
+HANDOFF.md
+**/AGENTS.md
+
+# Local dufs sample tree (generated for dev)
+# keep structure; ignore if huge later
+
+# Build output
+dist/

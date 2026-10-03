@@ -1,0 +1,431 @@
+/*
+ * Shared controls. Two button families only (.btn / .icon-btn), one input,
+ * one checkbox, one segmented control, one menu. Everything else composes these.
+ */
+
+/* ── Buttons ── */
+.btn,
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  height: var(--h-md);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-3);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  transition: background-color var(--t-1) var(--ease), color var(--t-1) var(--ease),
+    border-color var(--t-1) var(--ease), transform var(--t-2) var(--ease-spring);
+}
+
+.btn:active:not(:disabled),
+.icon-btn:active:not(:disabled) {
+  transform: scale(0.95);
+  transition-duration: var(--t-1);
+}
+
+.btn:disabled,
+.icon-btn:disabled {
+  opacity: 0.4;
+}
+
+.btn {
+  padding: 0 var(--s-3);
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-1);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--fill);
+}
+
+.btn-primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--accent), var(--text) 12%);
+}
+
+.btn-danger {
+  border-color: transparent;
+  background: var(--danger);
+  color: oklch(0.99 0 0);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--danger), black 10%);
+}
+
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-2);
+  box-shadow: none;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--fill);
+  color: var(--text);
+}
+
+.btn-sm {
+  height: var(--h-sm);
+  padding: 0 10px;
+  font-size: var(--fs-2);
+}
+
+.icon-btn {
+  width: var(--h-md);
+  padding: 0;
+  background: transparent;
+  color: var(--text-2);
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--fill);
+  color: var(--text);
+}
+
+.icon-btn.is-on {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.icon-btn.sm {
+  width: var(--h-sm);
+  height: var(--h-sm);
+}
+
+/* Icon swap for momentary confirmation (copy → check). */
+.icon-btn.is-done {
+  color: var(--success);
+}
+
+/* ── Input ── */
+.input {
+  width: 100%;
+  height: var(--h-md);
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--fs-4);
+  transition: border-color var(--t-1) var(--ease), box-shadow var(--t-2) var(--ease);
+}
+
+.input::placeholder {
+  color: var(--text-3);
+}
+
+.input:focus,
+.input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-2);
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+/* ── Checkbox ── */
+.check {
+  appearance: none;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--surface) center / 12px no-repeat;
+  cursor: pointer;
+  transition: background-color var(--t-1) var(--ease), border-color var(--t-1) var(--ease);
+}
+
+.check:hover {
+  border-color: var(--text-3);
+}
+
+.check:checked {
+  border-color: var(--accent);
+  background-color: var(--accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  animation: check-pop var(--t-3) var(--ease-spring);
+}
+
+.dark .check:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111a22' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+}
+
+.check:indeterminate {
+  border-color: var(--accent);
+  background-color: var(--accent);
+  background-image: linear-gradient(var(--accent-ink), var(--accent-ink));
+  background-size: 8px 2px;
+}
+
+@keyframes check-pop {
+  from {
+    transform: scale(0.7);
+  }
+}
+
+/* ── Segmented control ── */
+.seg {
+  --n: 3;
+  --i: 0;
+  position: relative;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  flex: 0 0 auto;
+  padding: 2px;
+  border-radius: calc(var(--r-sm) + 2px);
+  background: var(--fill);
+}
+
+.seg::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 4px) / var(--n));
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  transform: translateX(calc(var(--i) * 100%));
+  transition: transform var(--t-3) var(--ease-spring);
+}
+
+.seg > button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--h-sm);
+  min-width: 32px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  font-size: var(--fs-2);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color var(--t-2) var(--ease);
+}
+
+.seg > button:hover {
+  color: var(--text-2);
+}
+
+.seg > button[aria-selected="true"] {
+  color: var(--text);
+}
+
+/* ── Small pieces ── */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: var(--r-xs);
+  background: var(--fill);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 10px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: var(--fs-2);
+  font-weight: 550;
+  white-space: nowrap;
+  transition: background-color var(--t-1) var(--ease), transform var(--t-2) var(--ease-spring);
+}
+
+.chip:hover {
+  background: color-mix(in oklch, var(--accent-soft), var(--accent) 10%);
+}
+
+.chip:active {
+  transform: scale(0.96);
+}
+
+/* ── Menu (dropdowns + context menu) ── */
+.menu {
+  position: fixed;
+  z-index: 70;
+  min-width: 184px;
+  max-height: calc(100dvh - 16px);
+  overflow: auto;
+  padding: var(--s-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  transform-origin: var(--origin, top left);
+  animation: menu-in var(--t-2) var(--ease-out);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--r-xs);
+  color: var(--text);
+  font-size: var(--fs-3);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.menu-item > svg {
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+  outline: none;
+  background: var(--fill);
+}
+
+.menu-item:hover > svg {
+  color: var(--text-2);
+}
+
+.menu-item .hint {
+  margin-left: auto;
+  padding-left: var(--s-4);
+  color: var(--text-3);
+  font-size: var(--fs-2);
+}
+
+.menu-item.is-active {
+  color: var(--accent-text);
+  font-weight: 550;
+}
+
+.menu-item.is-active > svg {
+  color: var(--accent-text);
+}
+
+.menu-item.is-danger {
+  color: var(--danger);
+}
+
+.menu-item.is-danger > svg {
+  color: var(--danger);
+}
+
+.menu-item.is-danger:hover {
+  background: var(--danger-soft);
+}
+
+.menu-sep {
+  height: 1px;
+  margin: var(--s-1) calc(var(--s-1) * -1);
+  background: var(--border);
+}
+
+.menu-label {
+  padding: 6px 10px 2px;
+  color: var(--text-3);
+  font-size: var(--fs-1);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.click-away {
+  position: fixed;
+  inset: 0;
+  z-index: 69;
+  cursor: default;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-3px);
+  }
+}
+
+/* ── Section label (listing groups) ── */
+.section-label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: var(--s-3);
+  color: var(--text-2);
+  font-size: var(--fs-2);
+  font-weight: 600;
+}
+
+.section-label .num {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+/* ── File-type glyph: a tinted square; size comes from the component ── */
+.glyph {
+  --hue: 255;
+  display: grid;
+  place-items: center;
+  background: oklch(0.62 0.1 var(--hue) / 0.1);
+  color: oklch(0.55 0.11 var(--hue));
+}
+
+.dark .glyph {
+  background: oklch(0.75 0.1 var(--hue) / 0.12);
+  color: oklch(0.8 0.1 var(--hue));
+}
+
+.glyph.folder {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
