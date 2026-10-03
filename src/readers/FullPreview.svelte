@@ -5,6 +5,7 @@
   import { createPreviewContent } from "../lib/preview/content.svelte";
   import { formatSize } from "../lib/models/format";
   import PreviewBody from "./PreviewBody.svelte";
+  import { actionDeleteItems } from "../actions/files";
   import ImageStage from "./ImageStage.svelte";
 
   interface Props {
@@ -34,6 +35,26 @@
     onNavigate(next);
   }
 
+  /**
+   * Trash the current file, then advance. Landing on a neighbour keeps the
+   * reader usable while pruning a photo set; the last item closes it.
+   */
+  async function removeCurrent() {
+    if (!item) return;
+    const victim = item;
+    const next = list[index + 1] ?? list[index - 1];
+    await actionDeleteItems([victim]);
+    if (!directoryHas(victim)) {
+      if (next) onNavigate(next);
+      else onClose();
+    }
+  }
+
+  /** Did the delete actually take (it may have failed or been undone already)? */
+  function directoryHas(p: PathItem): boolean {
+    return allItems.some((x) => x.fullpath === p.fullpath);
+  }
+
   /** Chrome fades out while you look and returns the moment you move. */
   function wake() {
     idle = false;
@@ -53,6 +74,10 @@
     }
     else if (e.key === "ArrowLeft") go(-1);
     else if (e.key === "ArrowRight") go(1);
+    else if (e.key === "Delete") {
+      e.preventDefault();
+      void removeCurrent();
+    }
     else if (e.key.toLowerCase() === "f" && isImage) {
       const el = document.querySelector<HTMLElement>(".reader");
       void (document.fullscreenElement ? document.exitFullscreen() : el?.requestFullscreen())?.catch(() => {});
@@ -89,8 +114,8 @@
         <a class="icon-btn" href={item.fullpath} download={item.filename} title="下载">
           <Icon name="download" size={17} />
         </a>
-        <button class="icon-btn" type="button" title="关闭 (Esc)" onclick={onClose}>
-          <Icon name="x" size={18} />
+        <button class="icon-btn" type="button" title="移入回收站 (Delete)" onclick={() => void removeCurrent()}>
+          <Icon name="trash" size={17} />
         </button>
       </div>
     </header>

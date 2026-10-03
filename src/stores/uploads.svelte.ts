@@ -1,4 +1,4 @@
-import { uploadFileXhr } from "../lib/dufs/client";
+import { uploadFileXhr, resumeUploadXhr, probeUploadOffset } from "../lib/dufs/client";
 
 export type UploadStatus = "queued" | "uploading" | "done" | "error" | "canceled";
 
@@ -85,7 +85,7 @@ class UploadsStore {
 
   private start(item: UploadItem) {
     const id = item.id;
-    this.patch(id, { status: "uploading", loaded: 0, error: undefined });
+    this.patch(id, { status: "uploading", error: undefined });
     let aborted = false;
     const xhr = uploadFileXhr(item.url, item.file, {
       onProgress: (loaded, total) => this.patch(id, { loaded, size: total || item.size }),
@@ -106,6 +106,51 @@ class UploadsStore {
     });
   }
 
+  /**
+   * Resume a failed upload: HEAD the target to see how much of the file is
+   * already on the server, then PATCH-append the rest. This is dufs' native
+   * resumable protocol — PUT would restart (or collide) from byte zero.
+   */
+  private async resume(item: UploadItem) {
+    const id = item.id;
+    this.patch(id, { status: "uploading", error: undefined });
+    let offset: number;
+    try {
+      offset = await probeUploadOffset(item.url);
+    } catch (e) {
+      this.patch(id, { status: "error", error: e instanceof Error ? e.message : "探测断点失败" });
+      this.pump();
+      return;
+    }
+    if (offset > item.size) offset = 0; // stale bytes from a different file: restart
+    if (offset === item.size) {
+      // Already complete (e.g. the "failure" was the connection dropping after
+      // the last byte): verify nothing, mark done.
+      this.patch(id, { status: "done", loaded: item.size });
+      this.pump();
+      return;
+    }
+    let aborted = false;
+    const xhr = resumeUploadXhr(item.url, item.file, offset, {
+      onProgress: (loaded) => this.patch(id, { loaded: Math.max(offset, loaded) }),
+      onDone: () => {
+        this.patch(id, { status: "done", loaded: item.size });
+        this.abortHooks.delete(id);
+        this.pump();
+      },
+      onError: (err) => {
+        this.patch(id, { status: aborted ? "canceled" : "error", error: err.message });
+        this.abortHooks.delete(id);
+        this.pump();
+      },
+    });
+    this.abortHooks.set(id, () => {
+      aborted = true;
+      xhr.abort();
+    });
+  }
+
+
   cancel(id: string) {
     const item = this.items.find((i) => i.id === id);
     if (!item) return;
@@ -124,8 +169,9 @@ class UploadsStore {
   retry(id: string) {
     const item = this.items.find((i) => i.id === id);
     if (!item) return;
-    this.patch(id, { status: "queued", loaded: 0, error: undefined });
-    this.pump();
+    // Retry resumes from whatever the server already holds; a fresh queue
+    // entry would restart the transfer from zero.
+    void this.resume(item);
   }
 
   clearFinished() {

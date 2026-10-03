@@ -3,8 +3,17 @@
   import Icon from "./Icon.svelte";
 
   const pct = (n: number) => Math.round(Math.max(0, Math.min(1, n)) * 100);
-  let collapsed = $state(false);
   const failed = $derived(uploads.items.filter((it) => it.status === "error").length);
+  let collapsed = $state(false);
+
+  // Don't lose an in-flight transfer to a stray navigation; the retry path
+  // can resume, but only if the page is still here.
+  $effect(() => {
+    if (!uploads.inFlight) return;
+    const guard = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  });
 </script>
 
 {#if uploads.total}

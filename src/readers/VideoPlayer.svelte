@@ -2,10 +2,12 @@
   /** Playback speed carries across videos within a session. */
   let sessionRate = 1;
 </script>
-
 <script lang="ts">
-  import { tick } from "svelte";
   import Icon from "../components/Icon.svelte";
+  import { auth } from "../stores/auth.svelte";
+  import ExternalPlayerMenu from "../components/ExternalPlayerMenu.svelte";
+  import { previewableVideoExts } from "../lib/models/exts";
+  import { tick } from "svelte";
   import type { PathItem } from "../lib/dufs/types";
   import { directory } from "../stores/directory.svelte";
   import { fetchFileText } from "../lib/dufs/client";
@@ -31,6 +33,15 @@
   let hintTimer: ReturnType<typeof setTimeout> | undefined;
   let lastSaved = 0;
 
+  /** Absolute URL external players can reach (protected blobs can't leave the page). */
+  const externalUrl = $derived(auth.isAuthed ? "" : new URL(item.fullpath, location.href).href);
+  const siblings = $derived(
+    externalUrl
+      ? directory.sortedPaths
+          .filter((p) => !p.is_dir && previewableVideoExts.has(p.ext.toLowerCase()))
+          .map((p) => ({ name: p.name, url: new URL(p.fullpath, location.href).href }))
+      : [],
+  );
   const subs = $derived(findSubtitles(item, directory.paths));
 
   // Fetch + convert sibling subtitles to WebVTT blobs; revoke on change.
@@ -164,6 +175,9 @@
       </span>
     {/if}
     <span class="spacer"></span>
+    {#if externalUrl}
+      <ExternalPlayerMenu url={externalUrl} playlist={siblings} playlistBase={item.name.replace(/\.[^.]+$/, "")} />
+    {/if}
     {#if tracks.length}
       <button
         class="btn btn-ghost btn-sm"

@@ -63,7 +63,7 @@ export class DufsHttpError extends Error {
   }
 }
 
-async function dufsFetch(input: string, init?: RequestInit): Promise<Response> {
+export async function dufsFetch(input: string, init?: RequestInit): Promise<Response> {
   const init2 = init ?? {};
   const headers = new Headers(init2.headers);
   if (authToken && !headers.has("Authorization")) headers.set("Authorization", `Basic ${authToken}`);
@@ -188,6 +188,46 @@ export function uploadFileXhr(
   xhr.onerror = () => handlers.onError?.(new Error("网络错误"));
   xhr.onabort = () => handlers.onError?.(new Error("已取消"));
   xhr.send(file);
+  return xhr;
+}
+
+/** Bytes already on the server for a partially uploaded file (0 if absent). */
+export async function probeUploadOffset(url: string): Promise<number> {
+  const resp = await fetch(url, {
+    method: "HEAD",
+    headers: authHeaders(),
+    credentials: "omit",
+  });
+  if (resp.status === 404) return 0;
+  if (!resp.ok) throw new DufsHttpError(resp.status, resp.statusText || `HTTP ${resp.status}`);
+  return Number(resp.headers.get("content-length") ?? 0);
+}
+
+/** Continue a partial upload via dufs' `PATCH` + `X-Update-Range: append`. */
+export function resumeUploadXhr(
+  url: string,
+  file: File,
+  offset: number,
+  handlers: {
+    onProgress?: (loaded: number, total: number) => void;
+    onDone?: () => void;
+    onError?: (err: Error) => void;
+  },
+): XMLHttpRequest {
+  const xhr = new XMLHttpRequest();
+  xhr.open("PATCH", url);
+  if (authToken) xhr.setRequestHeader("Authorization", `Basic ${authToken}`);
+  xhr.setRequestHeader("X-Update-Range", "append");
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) handlers.onProgress?.(offset + e.loaded, file.size);
+  };
+  xhr.onload = () => {
+    if (xhr.status >= 400) handlers.onError?.(new DufsHttpError(xhr.status, xhr.statusText || `HTTP ${xhr.status}`));
+    else handlers.onDone?.();
+  };
+  xhr.onerror = () => handlers.onError?.(new Error("网络错误"));
+  xhr.onabort = () => handlers.onError?.(new Error("已取消"));
+  xhr.send(offset > 0 ? file.slice(offset) : file);
   return xhr;
 }
 

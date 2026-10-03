@@ -1,6 +1,8 @@
 <script lang="ts">
   import Icon from "../components/Icon.svelte";
   import LazyImage from "../views/LazyImage.svelte";
+  import { auth } from "../stores/auth.svelte";
+  import { fetchBlobUrl } from "../lib/dufs/client";
   import type { PathItem } from "../lib/dufs/types";
 
   interface Props {
@@ -89,10 +91,13 @@
 
   const nearby = $derived(items.slice(Math.max(0, index - 5), Math.min(items.length, index + 6)));
 
-  // Warm the neighbours so paging feels instant.
+  // Warm the neighbours so paging feels instant. Behind auth, a bare <img>
+  // would 401 and trigger the browser's native auth prompt — go via blob.
   $effect(() => {
     for (const n of [items[index - 1], items[index + 1]]) {
-      if (n) new Image().src = n.fullpath;
+      if (!n) continue;
+      if (auth.isAuthed) void fetchBlobUrl(n.fullpath).catch(() => {});
+      else new Image().src = n.fullpath;
     }
   });
 </script>

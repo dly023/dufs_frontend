@@ -7,7 +7,10 @@
   import { fetchBlobUrl } from "../lib/dufs/client";
   import { previewableAudioExts } from "../lib/models/exts";
   import { dirName } from "../lib/models/path";
+  import { parseAudioTags, TAG_WINDOW, type AudioTags } from "../lib/media/tags";
+  import { dufsFetch, DufsHttpError } from "../lib/dufs/client";
   import { playerOwnsKey } from "../lib/media/keys";
+  import ExternalPlayerMenu from "../components/ExternalPlayerMenu.svelte";
 
   interface Props {
     item: PathItem;
@@ -46,8 +49,43 @@
   const cover = $derived(
     directory.paths.find((p) => !p.is_dir && /^(cover|folder|front|album)\.(jpe?g|png|webp|avif)$/i.test(p.filename)) ?? null,
   );
-  const title = $derived(current.filename.replace(/\.[^.]+$/, ""));
-  const album = $derived(dirName(directory.path));
+  let tags = $state<AudioTags>({});
+
+  // Real tags when the file carries them (ID3v2 / MP4); they win over the
+  // filename and folder-name fallbacks above.
+  $effect(() => {
+    const it = current;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const resp = await dufsFetch(it.fullpath, { headers: { Range: `bytes=0-${TAG_WINDOW - 1}` } });
+        const parsed = parseAudioTags(await resp.arrayBuffer());
+        if (!cancelled && (parsed.title || parsed.artist || parsed.album || parsed.cover)) tags = parsed;
+      } catch (e) {
+        // dufs answers 416 when the file is smaller than the window: the whole
+        // file is the answer.
+        if (e instanceof DufsHttpError && e.status === 416) {
+          const parsed = parseAudioTags(await (await dufsFetch(it.fullpath)).arrayBuffer());
+          if (!cancelled && (parsed.title || parsed.artist || parsed.album || parsed.cover)) tags = parsed;
+        }
+        /* tags are a bonus, never an error */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  });
+
+  const title = $derived(tags.title || current.filename.replace(/\.[^.]+$/, ""));
+  const artist = $derived(tags.artist ?? "");
+  const album = $derived(tags.album || dirName(directory.path));
+  /** Absolute URL external players can reach (protected blobs can't leave the page). */
+  const externalUrl = $derived(auth.isAuthed ? "" : new URL(current.fullpath, location.href).href);
+  const siblings = $derived(
+    externalUrl
+      ? tracks.map((p) => ({ name: p.name, url: new URL(p.fullpath, location.href).href }))
+      : [],
+  );
 
   function loadMode(): Mode {
     try {
@@ -124,9 +162,13 @@
     if (!ms || typeof MediaMetadata === "undefined") return;
     ms.metadata = new MediaMetadata({
       title,
-      artist: album,
+      artist: artist || album,
       album,
-      artwork: cover && !auth.isAuthed ? [{ src: new URL(cover.fullpath, location.href).href }] : [],
+      artwork: tags.cover
+        ? [{ src: tags.cover }]
+        : cover && !auth.isAuthed
+          ? [{ src: new URL(cover.fullpath, location.href).href }]
+          : [],
     });
   });
 
@@ -168,7 +210,9 @@
 
 <div class="ap {variant}" bind:this={root} role="group" aria-label="音频播放器" tabindex="-1">
   <div class="art" class:is-playing={playing}>
-    {#if cover}
+    {#if tags.cover}
+      <img src={tags.cover} alt="" />
+    {:else if cover}
       <LazyImage item={cover} alt="" />
     {:else}
       <span class="disc"><Icon name="music" size={variant === "full" ? 40 : 30} stroke={1.5} /></span>
@@ -177,7 +221,10 @@
 
   <div class="meta">
     <strong class="title" title={current.filename}>{title}</strong>
-    <span class="sub num">{album}{#if tracks.length > 1 && index >= 0}{` · ${index + 1} / ${tracks.length}`}{/if}</span>
+    <span class="sub num">
+      {[artist, album].filter(Boolean).join(" · ")}
+      {#if tracks.length > 1 && index >= 0}{` · ${index + 1} / ${tracks.length}`}{/if}
+    </span>
   </div>
 
   <!-- svelte-ignore a11y_media_has_caption -->
@@ -197,6 +244,9 @@
     <button class="icon-btn" type="button" title="上一首" onclick={prev} disabled={tracks.length < 2}>
       <Icon name="skipBack" size={16} />
     </button>
+    {#if externalUrl}
+      <ExternalPlayerMenu url={externalUrl} playlist={siblings} playlistBase={album || "playlist"} size={15} />
+    {/if}
     <div class="seg" style:--n="3" style:--i={MODES.findIndex((m) => m.id === mode)} role="tablist" aria-label="播放顺序">
       {#each MODES as m (m.id)}
         <button type="button" role="tab" aria-selected={mode === m.id} onclick={() => setMode(m.id)}>{m.label}</button>
