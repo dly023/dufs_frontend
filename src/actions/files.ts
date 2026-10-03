@@ -31,14 +31,34 @@ interface UploadEntry {
   relPath: string;
 }
 
+/** Entries whose target name is already taken, checked per destination folder. */
+async function findExisting(entries: UploadEntry[], basePath: string): Promise<UploadEntry[]> {
+  const byDir = new Map<string, UploadEntry[]>();
+  for (const e of entries) {
+    const segs = e.relPath.split("/");
+    const dir = basePath + segs.slice(0, -1).map((s) => `${encodeURIComponent(s)}/`).join("");
+    (byDir.get(dir) ?? byDir.set(dir, []).get(dir)!).push(e);
+  }
+  const out: UploadEntry[] = [];
+  for (const [dir, list] of byDir) {
+    let names: Set<string>;
+    if (dir === directory.path && !directory.search) {
+      names = new Set(directory.paths.map((p) => p.name));
+    } else {
+      // A folder that doesn't exist yet can't hold conflicts.
+      const data = await fetchDirectory(dir, undefined, { skipCache: true }).catch(() => null);
+      names = new Set((data?.paths ?? []).map((p) => p.name));
+    }
+    for (const e of list) if (names.has(e.relPath.split("/").pop()!)) out.push(e);
+  }
+  return out;
+}
+
 async function runUploads(entries: UploadEntry[], basePath: string) {
   if (!entries.length) return;
-  // Preflight: skip files that already exist (ask once, apply to the rest).
-  const conflicts = (
-    await Promise.all(
-      entries.map(async (e) => ((await pathExists(basePath + e.relPath.split("/").map(encodeURIComponent).join("/"))) ? e : null)),
-    )
-  ).filter((e): e is UploadEntry => !!e);
+  // Preflight: which targets already exist? One listing per target folder
+  // (the current folder is already in memory), not one request per file.
+  const conflicts = await findExisting(entries, basePath);
   let skip = new Set<UploadEntry>();
   if (conflicts.length) {
     let mode: "overwrite" | "skip" | "all" | "skip-all" | null = null;
