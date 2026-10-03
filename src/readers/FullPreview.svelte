@@ -116,11 +116,7 @@
             <PreviewBody
               {item}
               {mode}
-              src={content.src}
-              text={content.text}
-              html={content.html}
-              loading={content.loading}
-              error={content.error}
+              {content}
               variant="full"
             />
           </div>

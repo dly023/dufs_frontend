@@ -137,3 +137,30 @@
   word-break: break-word;
   tab-size: 2;
 }
+
+/* Syntax colouring (rendered via {@html}, so global). */
+.code-json .j-key,
+.syn-key {
+  color: var(--syn-key);
+}
+.code-json .j-str,
+.syn-str {
+  color: var(--syn-str);
+}
+.code-json .j-num,
+.syn-num {
+  color: var(--syn-num);
+}
+.code-json .j-lit,
+.syn-lit {
+  color: var(--syn-lit);
+  font-weight: 550;
+}
+.code-json .j-pun,
+.syn-pun {
+  color: var(--syn-pun);
+}
+.syn-com {
+  color: var(--syn-com);
+  font-style: italic;
+}

@@ -2,18 +2,22 @@
   import Icon from "../components/Icon.svelte";
   import type { PathItem } from "../lib/dufs/types";
   import type { PreviewMode } from "../lib/models/preview";
+  import type { createPreviewContent } from "../lib/preview/content.svelte";
+  import { enhanceMarkdown } from "../lib/preview/markdownEnhance";
+  import CodeView from "./CodeView.svelte";
 
   interface Props {
     item: PathItem;
     mode: PreviewMode;
-    src: string;
-    text: string;
-    html: string;
-    loading: boolean;
-    error: string;
+    content: ReturnType<typeof createPreviewContent>;
     variant: "pane" | "full";
   }
-  let { item, mode, src, text, html, loading, error, variant }: Props = $props();
+  let { item, mode, content, variant }: Props = $props();
+  const src = $derived(content.src);
+  const text = $derived(content.text);
+  const html = $derived(content.html);
+  const loading = $derived(content.loading);
+  const error = $derived(content.error);
 
   // Font preview controls
   let fontSample = $state("");
@@ -45,9 +49,25 @@
 {:else if mode === "pdf"}
   {#if src}<embed class="pdf {variant}" {src} type="application/pdf" />{/if}
 {:else if mode === "markdown"}
-  <div class="doc prose">{@html html}</div>
-{:else if mode === "json" || mode === "jsonl" || mode === "text"}
-  <pre class="doc mono-block">{text}</pre>
+  <div class="doc prose" use:enhanceMarkdown={item}>{@html html}</div>
+{:else if mode === "json"}
+  {#if content.code}
+    <pre class="doc mono-block code-json">{@html content.code}</pre>
+  {:else}
+    <pre class="doc mono-block">{text}</pre>
+  {/if}
+{:else if mode === "jsonl"}
+  <div class="doc jsonl">
+    {#if content.note}<p class="jsonl-note num">{content.note}</p>{/if}
+    {#each content.records as r (r.line)}
+      <div class="jsonl-rec" class:is-invalid={!r.valid}>
+        <span class="jsonl-line num" title={r.valid ? `第 ${r.line} 行` : `第 ${r.line} 行 · 不是合法 JSON`}>{r.line}</span>
+        {#if r.html}<pre class="mono-block code-json">{@html r.html}</pre>{:else}<pre class="mono-block">{r.text}</pre>{/if}
+      </div>
+    {/each}
+  </div>
+{:else if mode === "text"}
+  <CodeView {item} {text} {variant} />
 {:else if mode === "font"}
   <div class="font">
     <div class="sample" style={`font-family:"${fontFamily}";font-size:${fontSize}px;font-weight:${fontWeight}`}>
@@ -120,6 +140,42 @@
   .doc {
     align-self: stretch;
     padding: var(--s-4);
+  }
+
+  /* JSON Lines: one block per record, real line numbers in a quiet gutter. */
+  .jsonl {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+  }
+
+  .jsonl-note {
+    color: var(--text-3);
+    font-size: var(--fs-2);
+  }
+
+  .jsonl-rec {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--s-3);
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+
+  .jsonl-rec.is-invalid {
+    box-shadow: inset 2px 0 0 var(--danger), inset 0 0 0 1px var(--border);
+  }
+
+  .jsonl-line {
+    min-width: 2ch;
+    padding-top: 1px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    font-size: var(--fs-1);
+    text-align: right;
+    user-select: none;
   }
 
   .audio {

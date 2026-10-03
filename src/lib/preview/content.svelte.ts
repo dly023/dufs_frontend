@@ -4,6 +4,17 @@ import { fetchFileText, fetchFileHead, fetchBlobUrl } from "../dufs/client";
 import { renderMarkdownSafe } from "../sanitize/markdown";
 import { auth } from "../../stores/auth.svelte";
 import { formatSize } from "../models/format";
+import { highlightJson } from "../highlight/json";
+
+/** One JSON Lines record, pretty-printed and (when small enough) coloured. */
+export interface JsonlRecord {
+  line: number;
+  text: string;
+  html: string | null;
+  valid: boolean;
+}
+
+const JSONL_SHOWN = 30;
 
 /**
  * Loads whatever is needed to render a preview for the current item.
@@ -14,6 +25,11 @@ export function createPreviewContent(getItem: () => PathItem | null) {
   let src = $state("");
   let text = $state("");
   let html = $state("");
+  /** Highlighted JSON (escaped HTML), or "" to fall back to `text`. */
+  let code = $state("");
+  let records = $state<JsonlRecord[]>([]);
+  /** One-line summary shown above JSONL records. */
+  let note = $state("");
   let loading = $state(false);
   let error = $state("");
 
@@ -28,6 +44,9 @@ export function createPreviewContent(getItem: () => PathItem | null) {
     src = "";
     text = "";
     html = "";
+    code = "";
+    records = [];
+    note = "";
     error = "";
     if (!item) {
       mode = "none";
@@ -54,25 +73,26 @@ export function createPreviewContent(getItem: () => PathItem | null) {
           } catch {
             text = raw;
           }
+          code = highlightJson(text) ?? "";
         } else if (mode === "jsonl") {
           // Only the head of the file is fetched; the last line may be cut mid-JSON.
           const { text: chunk, partial } = await fetchFileHead(item.fullpath, JSONL_HEAD);
           if (cancelled) return;
           const lines = chunk.split("\n");
           if (partial) lines.pop();
-          const nonEmpty = lines.filter((l) => l.trim());
-          const shown = nonEmpty.slice(0, 20);
-          const pretty = shown.map((l) => {
+          // Keep real line numbers (blank lines still count) for orientation.
+          const numbered = lines.map((l, i) => ({ l, line: i + 1 })).filter((x) => x.l.trim());
+          records = numbered.slice(0, JSONL_SHOWN).map(({ l, line }) => {
             try {
-              return JSON.stringify(JSON.parse(l), null, 2);
+              const pretty = JSON.stringify(JSON.parse(l), null, 2);
+              return { line, text: pretty, html: highlightJson(pretty), valid: true };
             } catch {
-              return l;
+              return { line, text: l, html: null, valid: false };
             }
           });
-          const info = partial
-            ? `${formatSize(item.size)} · 仅显示前 ${pretty.length} 行（文件更大）`
-            : `${nonEmpty.length} 行 · ${formatSize(item.size)}`;
-          text = `// ${info}\n\n${pretty.join("\n\n")}`;
+          note = partial
+            ? `前 ${records.length} 条 · 文件共 ${formatSize(item.size)}，仅读取开头部分`
+            : `${numbered.length > records.length ? `前 ${records.length} / ` : ""}${numbered.length} 条 · ${formatSize(item.size)}`;
         } else if (mode === "text") {
           const raw = await readText(item);
           if (!cancelled) text = raw.length > TEXT_LIMIT ? `${raw.slice(0, TEXT_LIMIT)}\n\n…（已截断）` : raw;
@@ -101,6 +121,15 @@ export function createPreviewContent(getItem: () => PathItem | null) {
     },
     get html() {
       return html;
+    },
+    get code() {
+      return code;
+    },
+    get records() {
+      return records;
+    },
+    get note() {
+      return note;
     },
     get loading() {
       return loading;

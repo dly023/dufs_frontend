@@ -1,0 +1,1 @@
+{"name":"dufs media shell","version":2,"private":true,"tags":["svelte","dufs","media"],"theme":{"accent":"oklch(0.6 0.135 215)","radius":8,"dark":null},"authors":[{"name":"dly","commits":42,"active":true}],"note":"keys, strings, numbers: 3.14, -2, 1e3 and \"escapes\" stay distinct"}
