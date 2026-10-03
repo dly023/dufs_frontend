@@ -19,6 +19,31 @@
   const loading = $derived(content.loading);
   const error = $derived(content.error);
 
+  const JSONL_PAGE = 50;
+  let jsonlLimit = $state(JSONL_PAGE);
+  $effect(() => {
+    void item.fullpath;
+    jsonlLimit = JSONL_PAGE;
+  });
+
+  /** JSONL: one line per record (scan) or pretty-printed (read). Remembered. */
+  let jsonlExpanded = $state(loadExpanded());
+  function loadExpanded(): boolean {
+    try {
+      return localStorage.getItem("dufs-jsonl-expanded") === "1";
+    } catch {
+      return false;
+    }
+  }
+  function setExpanded(on: boolean) {
+    jsonlExpanded = on;
+    try {
+      localStorage.setItem("dufs-jsonl-expanded", on ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }
+
   // Font preview controls
   let fontSample = $state("");
   let fontSize = $state(32);
@@ -57,14 +82,26 @@
     <pre class="doc mono-block">{text}</pre>
   {/if}
 {:else if mode === "jsonl"}
-  <div class="doc jsonl">
-    {#if content.note}<p class="jsonl-note num">{content.note}</p>{/if}
-    {#each content.records as r (r.line)}
+  <div class="doc jsonl" class:is-compact={!jsonlExpanded}>
+    <div class="jsonl-bar">
+      {#if content.note}<p class="jsonl-note num">{content.note}</p>{/if}
+      <div class="seg" style:--n="2" style:--i={jsonlExpanded ? 1 : 0} role="tablist" aria-label="JSONL 显示方式">
+        <button type="button" role="tab" aria-selected={!jsonlExpanded} onclick={() => setExpanded(false)}>紧凑</button>
+        <button type="button" role="tab" aria-selected={jsonlExpanded} onclick={() => setExpanded(true)}>展开</button>
+      </div>
+    </div>
+    {#each content.records.slice(0, jsonlLimit) as r (r.line)}
+      {@const shown = jsonlExpanded ? r.html : r.rawHtml}
       <div class="jsonl-rec" class:is-invalid={!r.valid}>
         <span class="jsonl-line num" title={r.valid ? `第 ${r.line} 行` : `第 ${r.line} 行 · 不是合法 JSON`}>{r.line}</span>
-        {#if r.html}<pre class="mono-block code-json">{@html r.html}</pre>{:else}<pre class="mono-block">{r.text}</pre>{/if}
+        {#if shown}<pre class="mono-block code-json">{@html shown}</pre>{:else}<pre class="mono-block">{jsonlExpanded ? r.text : r.raw}</pre>{/if}
       </div>
     {/each}
+    {#if content.records.length > jsonlLimit}
+      <button class="btn btn-ghost btn-sm jsonl-more" type="button" onclick={() => (jsonlLimit += JSONL_PAGE)}>
+        再显示 {Math.min(JSONL_PAGE, content.records.length - jsonlLimit)} 条 · 还有 {content.records.length - jsonlLimit} 条
+      </button>
+    {/if}
   </div>
 {:else if mode === "text"}
   <CodeView {item} {text} {variant} />
@@ -149,9 +186,41 @@
     gap: var(--s-2);
   }
 
+  .jsonl-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    flex-wrap: wrap;
+  }
+
   .jsonl-note {
     color: var(--text-3);
     font-size: var(--fs-2);
+  }
+
+  /* Compact: records read like a log, one tight row each. */
+  .jsonl.is-compact {
+    gap: 0;
+  }
+
+  .jsonl.is-compact .jsonl-bar {
+    margin-bottom: var(--s-2);
+  }
+
+  .jsonl.is-compact .jsonl-rec {
+    padding: 5px var(--s-3);
+    border-radius: 0;
+    background: none;
+    box-shadow: inset 0 -1px 0 var(--border);
+  }
+
+  .jsonl.is-compact .jsonl-rec.is-invalid {
+    box-shadow: inset 2px 0 0 var(--danger), inset 0 -1px 0 var(--border);
+  }
+
+  .jsonl.is-compact .jsonl-rec:hover {
+    background: var(--fill);
   }
 
   .jsonl-rec {
@@ -166,6 +235,11 @@
 
   .jsonl-rec.is-invalid {
     box-shadow: inset 2px 0 0 var(--danger), inset 0 0 0 1px var(--border);
+  }
+
+  .jsonl-more {
+    align-self: center;
+    margin-top: var(--s-3);
   }
 
   .jsonl-line {

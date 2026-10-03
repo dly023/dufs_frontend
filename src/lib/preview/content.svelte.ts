@@ -9,12 +9,17 @@ import { highlightJson } from "../highlight/json";
 /** One JSON Lines record, pretty-printed and (when small enough) coloured. */
 export interface JsonlRecord {
   line: number;
+  /** The record as written (one line). */
+  raw: string;
+  rawHtml: string | null;
+  /** Pretty-printed (two-space indent). */
   text: string;
   html: string | null;
   valid: boolean;
 }
 
-const JSONL_SHOWN = 30;
+/** Records parsed from the head we read; the view renders them in pages. */
+const JSONL_MAX = 1000;
 
 /**
  * Loads whatever is needed to render a preview for the current item.
@@ -76,23 +81,26 @@ export function createPreviewContent(getItem: () => PathItem | null) {
           code = highlightJson(text) ?? "";
         } else if (mode === "jsonl") {
           // Only the head of the file is fetched; the last line may be cut mid-JSON.
-          const { text: chunk, partial } = await fetchFileHead(item.fullpath, JSONL_HEAD);
+          const { text: chunk } = await fetchFileHead(item.fullpath, JSONL_HEAD);
           if (cancelled) return;
+          // Only a file larger than the head we read can be cut mid-record.
+          const partial = item.size > JSONL_HEAD;
           const lines = chunk.split("\n");
           if (partial) lines.pop();
           // Keep real line numbers (blank lines still count) for orientation.
           const numbered = lines.map((l, i) => ({ l, line: i + 1 })).filter((x) => x.l.trim());
-          records = numbered.slice(0, JSONL_SHOWN).map(({ l, line }) => {
+          records = numbered.slice(0, JSONL_MAX).map(({ l, line }) => {
+            const raw = l.trim();
             try {
-              const pretty = JSON.stringify(JSON.parse(l), null, 2);
-              return { line, text: pretty, html: highlightJson(pretty), valid: true };
+              const pretty = JSON.stringify(JSON.parse(raw), null, 2);
+              return { line, raw, rawHtml: highlightJson(raw), text: pretty, html: highlightJson(pretty), valid: true };
             } catch {
-              return { line, text: l, html: null, valid: false };
+              return { line, raw, rawHtml: null, text: raw, html: null, valid: false };
             }
           });
           note = partial
-            ? `前 ${records.length} 条 · 文件共 ${formatSize(item.size)}，仅读取开头部分`
-            : `${numbered.length > records.length ? `前 ${records.length} / ` : ""}${numbered.length} 条 · ${formatSize(item.size)}`;
+            ? `${records.length} 条 · 文件共 ${formatSize(item.size)}，仅读取了开头部分`
+            : `${numbered.length} 条 · ${formatSize(item.size)}${numbered.length > records.length ? ` · 仅解析前 ${records.length} 条` : ""}`;
         } else if (mode === "text") {
           const raw = await readText(item);
           if (!cancelled) text = raw.length > TEXT_LIMIT ? `${raw.slice(0, TEXT_LIMIT)}\n\n…（已截断）` : raw;
