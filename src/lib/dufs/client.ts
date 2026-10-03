@@ -1,6 +1,7 @@
 import type { DufsData, PathItem } from "./types";
 import { getExt } from "../models/path";
 import { LRUCache, SessionMirror } from "./cache";
+import { setRootFromListing } from "../root.svelte";
 
 function getInitialData(): DufsData | undefined {
   const data = window.__INITIAL_DATA__;
@@ -98,6 +99,7 @@ export async function fetchDirectory(
   }
 
   const data: DufsData = await resp.json();
+  setRootFromListing(data.uri_prefix);
   data.paths.forEach((p) => enrichPath(p, currentPath));
   if (search) dirCache.set(cacheKey, data);
   else rememberDirectory(currentPath, data);
@@ -134,6 +136,7 @@ export function listingSignature(d: DufsData | null): string {
 export function loadInitialData(currentPath: string): DufsData | undefined {
   const data = getInitialData();
   if (data) {
+    setRootFromListing(data.uri_prefix);
     data.paths.forEach((p) => enrichPath(p, currentPath));
     rememberDirectory(currentPath, data);
   }
@@ -215,9 +218,48 @@ export async function getToken(fullpath: string, isDir: boolean): Promise<string
   return resp.text();
 }
 
-export async function fetchFileText(fullpath: string): Promise<string> {
+export type TextEncoding = "utf-8" | "utf-16le" | "utf-16be" | "gb18030";
+
+/**
+ * Decode file bytes the way people actually store text: BOMs first, then strict
+ * UTF-8, then GB18030 (a superset of GBK/GB2312 — most legacy Chinese .txt).
+ * `cut` = the bytes were truncated (range read): a multi-byte sequence split at
+ * the end must not be mistaken for a non-UTF-8 file.
+ */
+export function decodeText(buf: ArrayBuffer, cut = false): { text: string; encoding: TextEncoding } {
+  const b = new Uint8Array(buf);
+  if (b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf) {
+    return { text: new TextDecoder("utf-8").decode(b.subarray(3)), encoding: "utf-8" };
+  }
+  if (b[0] === 0xff && b[1] === 0xfe) return { text: new TextDecoder("utf-16le").decode(b.subarray(2)), encoding: "utf-16le" };
+  if (b[0] === 0xfe && b[1] === 0xff) return { text: new TextDecoder("utf-16be").decode(b.subarray(2)), encoding: "utf-16be" };
+  // Drop an incomplete trailing UTF-8 sequence (≤3 bytes) before judging.
+  let end = b.length;
+  if (cut) {
+    for (let i = 1; i <= 3 && end - i >= 0; i += 1) {
+      const c = b[end - i];
+      if ((c & 0xc0) === 0x80) continue; // continuation byte, keep looking back
+      const need = c >= 0xf0 ? 4 : c >= 0xe0 ? 3 : c >= 0xc0 ? 2 : 1;
+      if (need > i) end -= i;
+      break;
+    }
+  }
+  try {
+    return { text: new TextDecoder("utf-8", { fatal: true }).decode(b.subarray(0, end)), encoding: "utf-8" };
+  } catch {
+    // GB18030 sequences are ≤4 bytes too; a cut tail decodes to at most one U+FFFD.
+    return { text: new TextDecoder("gb18030").decode(b), encoding: "gb18030" };
+  }
+}
+
+/** Text plus the encoding it was stored in (the editor warns before re-saving non-UTF-8). */
+export async function fetchText(fullpath: string): Promise<{ text: string; encoding: TextEncoding }> {
   const resp = await dufsFetch(fullpath);
-  return resp.text();
+  return decodeText(await resp.arrayBuffer());
+}
+
+export async function fetchFileText(fullpath: string): Promise<string> {
+  return (await fetchText(fullpath)).text;
 }
 
 /**
@@ -242,8 +284,9 @@ export async function fetchFileHead(
     const resp = await dufsFetch(fullpath, {
       headers: { Range: `bytes=0-${Math.max(0, bytes - 1)}` },
     });
-    const text = await resp.text();
-    return { text, partial: resp.status === 206 };
+    const partial = resp.status === 206;
+    const { text } = decodeText(await resp.arrayBuffer(), partial);
+    return { text, partial };
   } catch (e) {
     // dufs answers 416 when the requested range is past EOF (file smaller than
     // the window): the whole file is the answer.

@@ -376,8 +376,10 @@
     color: var(--text);
   }
 
-  /* The hint is for discovery; it steps aside once you are typing. */
-  .search:focus-within .kbd {
+  /* The hint is for discovery; it steps aside once you are typing. Keyed on
+     the input itself: pressing the scope button must not shift the layout
+     under the cursor (the click would land elsewhere and be lost). */
+  .search:has(input:focus) .kbd {
     display: none;
   }
 

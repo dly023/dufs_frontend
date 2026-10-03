@@ -11,6 +11,7 @@ import { naturalCompare } from "../lib/models/sort";
 import { getFileCategory } from "../lib/models/exts";
 import { suggestsComic } from "../lib/smart/profile";
 import { prefs } from "./prefs.svelte";
+import { rootPath } from "../lib/root.svelte";
 
 class DirectoryStore {
   path = $state("/");
@@ -30,7 +31,7 @@ class DirectoryStore {
     const filter = prefs.typeFilter;
     const items = this.paths.filter(
       (p) =>
-        !(p.is_dir && p.name === ".trash" && this.path === "/") &&
+        !(p.is_dir && p.name === ".trash" && this.path === rootPath()) &&
         (filter === "all" || p.is_dir || getFileCategory(p.ext) === filter),
     );
     const col = prefs.sortColumn;
@@ -107,7 +108,7 @@ class DirectoryStore {
     this.loading = true;
     this.error = null;
     try {
-      const data = await fetchDirectory(scope === "global" ? "/" : this.path, query, {
+      const data = await fetchDirectory(scope === "global" ? rootPath() : this.path, query, {
         skipCache: true,
       });
       if (ticket === this.seq && data) this.raw = data;

@@ -33,6 +33,7 @@
   import { invalidateDirectoryCache } from "./lib/dufs/client";
   import { directoryItemFromPath, dirName, ensureTrailingSlash, parentDir } from "./lib/models/path";
   import { scrollMemory } from "./stores/scrollMemory";
+  import { clampToRoot, isRoot } from "./lib/root.svelte";
   import { localFilter } from "./stores/filter.svelte";
   import { detectPreviewMode, isPreviewable } from "./lib/models/preview";
   import { heroMorph, thumbOf } from "./lib/motion";
@@ -256,7 +257,7 @@
       navigateTo(entry.path);
       return;
     }
-    const parent = entry.path.slice(0, entry.path.lastIndexOf("/") + 1) || "/";
+    const parent = clampToRoot(entry.path.slice(0, entry.path.lastIndexOf("/") + 1));
     writeUrl({ path: parent, preview: "file", file: entry.path, replace: false });
     pendingFile = entry.path;
     void directory.load(parent);
@@ -320,7 +321,7 @@
   }
 
   function goUp() {
-    if (directory.path !== "/") navigateTo(parentDir(directory.path));
+    if (!isRoot(directory.path)) navigateTo(parentDir(directory.path));
   }
 
   async function refreshDir() {
@@ -480,11 +481,22 @@
       narrow = mq.matches;
       sidebarOpen = !mq.matches;
     };
+    // Links inside rendered Markdown that point at files open in our own preview.
+    const onOpenPath = (e: Event) => {
+      const path = (e as CustomEvent<{ path: string }>).detail?.path;
+      if (!path) return;
+      e.preventDefault();
+      const here = directory.sortedPaths.find((p) => p.fullpath === path);
+      if (here) openPreview(here);
+      else openPlace({ path, name: decodeURIComponent(path.split("/").pop() ?? path), isDir: false });
+    };
+    window.addEventListener("dufs:open-path", onOpenPath);
     window.addEventListener("popstate", onPop);
     window.addEventListener("keydown", onKey);
     window.addEventListener("paste", onPaste);
     mq.addEventListener("change", onMq);
     return () => {
+      window.removeEventListener("dufs:open-path", onOpenPath);
       window.removeEventListener("popstate", onPop);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("paste", onPaste);

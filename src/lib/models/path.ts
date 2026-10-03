@@ -1,3 +1,5 @@
+import { rootPath } from "../root.svelte";
+
 export function getExt(name: string): string {
   const i = name.lastIndexOf(".");
   if (i <= 0) return "";
@@ -36,17 +38,21 @@ export function directoryItemFromPath(path: string): import("./../dufs/types").P
   };
 }
 
-/** Human name of a directory path ("/" → 根目录). */
+/** Human name of a directory path (the tree root → 根目录). */
 export function dirName(path: string): string {
+  if (ensureTrailingSlash(path) === rootPath()) return "根目录";
   const last = path.split("/").filter(Boolean).pop();
   return last ? decodeURIComponent(last) : "根目录";
 }
 
-/** Parent directory of a path, with trailing slash ("/a/b/" → "/a/"). */
+/** Parent directory with trailing slash ("/a/b/" → "/a/"); never above the root. */
 export function parentDir(path: string): string {
+  const root = rootPath();
+  if (!path.startsWith(root) || path === root) return root;
   const segs = path.split("/").filter(Boolean);
   segs.pop();
-  return segs.length ? `/${segs.join("/")}/` : "/";
+  const parent = segs.length ? `/${segs.join("/")}/` : "/";
+  return parent.startsWith(root) ? parent : root;
 }
 
 export interface Crumb {
@@ -54,10 +60,13 @@ export interface Crumb {
   path: string;
 }
 
+/** Breadcrumbs from the tree root (not the URL root) down to `path`. */
 export function crumbsOf(path: string): Crumb[] {
-  const out: Crumb[] = [{ label: "根目录", path: "/" }];
-  let acc = "";
-  for (const seg of path.split("/").filter(Boolean)) {
+  const root = rootPath();
+  const out: Crumb[] = [{ label: "根目录", path: root }];
+  if (!path.startsWith(root)) return out;
+  let acc = root.slice(0, -1);
+  for (const seg of path.slice(root.length).split("/").filter(Boolean)) {
     acc += `/${seg}`;
     out.push({ label: decodeURIComponent(seg), path: `${acc}/` });
   }

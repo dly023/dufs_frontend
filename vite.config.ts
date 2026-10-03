@@ -26,7 +26,8 @@ export default defineConfig({
         chunkFileNames: "assets/[name]-[hash].js",
         assetFileNames: (assetInfo) => {
           const n = assetInfo.names?.[0] ?? "";
-          if (n.endsWith(".css")) return "assets/index.css";
+          // dufs expects the entry stylesheet at assets/index.css; lazy chunks keep hashed names.
+          if (n === "index.css" || n === "style.css") return "assets/index.css";
           return "assets/[name]-[hash][extname]";
         },
       },

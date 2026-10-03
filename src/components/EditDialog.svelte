@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from "./Icon.svelte";
   import type { PathItem } from "../lib/dufs/types";
-  import { fetchFileText, saveFile } from "../lib/dufs/client";
+  import { fetchText, saveFile, type TextEncoding } from "../lib/dufs/client";
   import { toasts } from "../stores/toast.svelte";
 
   interface Props {
@@ -12,6 +12,8 @@
   let { item, onClose, onSaved }: Props = $props();
 
   let content = $state("");
+  /** Saving always writes UTF-8; say so when the file was stored otherwise. */
+  let encoding = $state<TextEncoding>("utf-8");
   let loading = $state(false);
   let saving = $state(false);
   let wrap = $state<"soft" | "off">("soft");
@@ -31,9 +33,12 @@
     let cancelled = false;
     loading = true;
     content = "";
-    fetchFileText(cur.fullpath)
-      .then((t) => {
-        if (!cancelled) content = t;
+    encoding = "utf-8";
+    fetchText(cur.fullpath)
+      .then((r) => {
+        if (cancelled) return;
+        content = r.text;
+        encoding = r.encoding;
       })
       .catch((e) => toasts.error(e instanceof Error ? e.message : "读取失败"))
       .finally(() => {
@@ -88,6 +93,9 @@
       {#if loading}
         <p class="modal-msg">加载中…</p>
       {:else}
+        {#if encoding !== "utf-8"}
+          <p class="enc-note">此文件是 {encoding.toUpperCase()} 编码，保存后会转为 UTF-8。</p>
+        {/if}
         <textarea
           bind:this={area}
           class="editor"
@@ -107,6 +115,12 @@
 {/if}
 
 <style>
+  .enc-note {
+    margin: calc(var(--s-2) * -1) 0 0;
+    color: var(--warning);
+    font-size: var(--fs-2);
+  }
+
   .editor-card {
     width: min(960px, 100%);
     height: min(86vh, 900px);

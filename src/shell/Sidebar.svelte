@@ -7,6 +7,7 @@
   import { fetchDirectory, prefetchDirectory } from "../lib/dufs/client";
   import { ensureTrailingSlash } from "../lib/models/path";
   import { places, type PlaceEntry } from "../stores/places.svelte";
+  import { rootPath } from "../lib/root.svelte";
   import { folderProbes, probeFolder } from "../stores/folderProbe.svelte";
 
   interface TreeNode {
@@ -24,7 +25,13 @@
   }
   let { open, onNavigate, onOpenPlace }: Props = $props();
 
-  let root = $state<TreeNode>({ name: "根目录", path: "/", children: null, open: true });
+  let root = $state<TreeNode>({ name: "根目录", path: rootPath(), children: null, open: true });
+
+  // The tree starts where dufs mounts it (--path-prefix), not at the URL root.
+  $effect(() => {
+    const top = rootPath();
+    if (root.path !== top) root = { name: "根目录", path: top, children: null, open: true };
+  });
   let bodyEl = $state<HTMLElement>();
 
   async function loadChildren(node: TreeNode): Promise<void> {
@@ -46,8 +53,9 @@
   async function revealCurrent(): Promise<void> {
     await loadChildren(root);
     let node: TreeNode = root;
-    let acc = "/";
-    for (const part of directory.path.split("/").filter(Boolean)) {
+    let acc = root.path;
+    if (!directory.path.startsWith(acc)) return;
+    for (const part of directory.path.slice(acc.length).split("/").filter(Boolean)) {
       acc += `${part}/`;
       await loadChildren(node);
       const next = node.children?.find((c) => c.path === acc);

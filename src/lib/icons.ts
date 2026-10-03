@@ -58,6 +58,9 @@ export const ICONS = {
   alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',
   checkCircle: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
   play: '<path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5Z"/>',
+  skipBack: '<path d="M19 20 9 12l10-8Z"/><path d="M5 19V5"/>',
+  skipForward: '<path d="m5 4 10 8-10 8Z"/><path d="M19 5v14"/>',
+  captions: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10.5 10.2a2.2 2.2 0 1 0 0 3.6M17 10.2a2.2 2.2 0 1 0 0 3.6"/>',
 } as const;
 
 export type IconName = keyof typeof ICONS;

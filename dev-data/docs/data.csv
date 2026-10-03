@@ -1,0 +1,7 @@
+id,name,city,size_mb,note,updated
+1,shot-01.png,"Shanghai, CN",12.5,plain,2026-09-17
+2,"manga ""ch01""",Tokyo,1840,"line one
+line two",2026-09-18
+3,photos.zip,Berlin,"1,024",has comma number,2026-09-19
+4,notes.txt,,0.3,,2026-09-20
+5,"long description cell that keeps going well beyond the column width so it gets truncated",Paris,7,ellipsis,2026-09-21

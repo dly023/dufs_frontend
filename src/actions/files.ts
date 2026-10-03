@@ -11,7 +11,7 @@ import { directory } from "../stores/directory.svelte";
 import { selection } from "../stores/selection.svelte";
 import { toasts } from "../stores/toast.svelte";
 import { dialogs } from "../stores/dialog.svelte";
-import { trash, TRASH_DIR, genTrashId, type TrashEntry } from "../stores/trash.svelte";
+import { trash, trashDir, genTrashId, type TrashEntry } from "../stores/trash.svelte";
 import { uploads } from "../stores/uploads.svelte";
 import { folderProbes } from "../stores/folderProbe.svelte";
 import { ensureTrailingSlash } from "../lib/models/path";
@@ -116,8 +116,8 @@ async function ensureTrashDir(): Promise<void> {
   try {
     // `?json` reports dir_exists without an error status (HEAD answers 200 either way),
     // so MKCOL only runs when it is really needed and never logs a 405.
-    const data = await fetchDirectory(TRASH_DIR, undefined, { skipCache: true });
-    if (!data?.dir_exists) await createFolder(TRASH_DIR);
+    const data = await fetchDirectory(trashDir(), undefined, { skipCache: true });
+    if (!data?.dir_exists) await createFolder(trashDir());
     trashReady = true;
   } catch {
     // No permission or a race — the MOVE below will surface real errors.
@@ -137,7 +137,7 @@ export async function actionDeleteItems(items: PathItem[]) {
   const entries: TrashEntry[] = [];
   for (const item of items) {
     const id = genTrashId();
-    const trashPath = TRASH_DIR + id;
+    const trashPath = trashDir() + id;
     try {
       await moveItem(item.fullpath, trashPath);
       entries.push({

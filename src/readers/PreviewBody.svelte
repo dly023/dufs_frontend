@@ -4,15 +4,21 @@
   import type { PreviewMode } from "../lib/models/preview";
   import type { createPreviewContent } from "../lib/preview/content.svelte";
   import { enhanceMarkdown } from "../lib/preview/markdownEnhance";
-  import CodeView from "./CodeView.svelte";
 
   interface Props {
     item: PathItem;
     mode: PreviewMode;
     content: ReturnType<typeof createPreviewContent>;
     variant: "pane" | "full";
+    /** Lets players move to a sibling file (e.g. the next track). */
+    onNavigate?: (item: PathItem) => void;
   }
-  let { item, mode, content, variant }: Props = $props();
+  let { item, mode, content, variant, onNavigate }: Props = $props();
+
+  // Heavier viewers load on first use, keeping the main bundle lean.
+  const loadCode = () => import("./CodeView.svelte");
+  const loadVideo = () => import("./VideoPlayer.svelte");
+  const loadAudio = () => import("./AudioPlayer.svelte");
   const src = $derived(content.src);
   const text = $derived(content.text);
   const html = $derived(content.html);
@@ -58,19 +64,9 @@
 {:else if mode === "image"}
   {#if src}<img class="media {variant}" {src} alt={item.name} />{/if}
 {:else if mode === "video"}
-  {#if src}
-    <!-- svelte-ignore a11y_media_has_caption -->
-    <video class="media {variant}" {src} controls autoplay preload="metadata"></video>
-  {/if}
+  {#if src}{#await loadVideo() then m}<m.default {item} {src} {variant} />{/await}{/if}
 {:else if mode === "audio"}
-  <div class="audio">
-    <span class="disc"><Icon name="music" size={32} stroke={1.5} /></span>
-    <div class="audio-name">{item.filename}</div>
-    {#if src}
-      <!-- svelte-ignore a11y_media_has_caption -->
-      <audio {src} controls autoplay preload="metadata"></audio>
-    {/if}
-  </div>
+  {#await loadAudio() then m}<m.default {item} {src} {variant} onTrack={onNavigate} />{/await}
 {:else if mode === "pdf"}
   {#if src}<embed class="pdf {variant}" {src} type="application/pdf" />{/if}
 {:else if mode === "markdown"}
@@ -104,7 +100,7 @@
     {/if}
   </div>
 {:else if mode === "text"}
-  <CodeView {item} {text} {variant} />
+  {#await loadCode() then m}<m.default {item} {text} {variant} />{/await}
 {:else if mode === "font"}
   <div class="font">
     <div class="sample" style={`font-family:"${fontFamily}";font-size:${fontSize}px;font-weight:${fontWeight}`}>
@@ -250,37 +246,6 @@
     font-size: var(--fs-1);
     text-align: right;
     user-select: none;
-  }
-
-  .audio {
-    margin: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--s-3);
-    width: 100%;
-    padding: var(--s-6);
-  }
-
-  .disc {
-    display: grid;
-    place-items: center;
-    width: 96px;
-    height: 96px;
-    border-radius: 50%;
-    background: radial-gradient(circle, var(--surface) 0 14px, var(--fill-strong) 15px);
-    color: var(--text-3);
-    box-shadow: var(--shadow-2);
-  }
-
-  .audio-name {
-    font-weight: 600;
-    text-align: center;
-    overflow-wrap: anywhere;
-  }
-
-  .audio audio {
-    width: 100%;
   }
 
   .font {

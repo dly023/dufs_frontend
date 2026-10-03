@@ -1,0 +1,15 @@
+# dufs deployment
+server:
+  port: 5000
+  bind: "0.0.0.0"
+  allow_all: true
+  path_prefix: ~
+assets: &assets /root/services/dufs/dist
+auth:
+  - user: admin
+    rules: ["/:rw"]
+  - user: guest
+    rules: ["/photos:ro"]
+limits:
+  upload_mb: 2048
+  ratio: 0.75

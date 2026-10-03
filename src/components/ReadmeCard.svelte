@@ -3,6 +3,7 @@
   import { directory } from "../stores/directory.svelte";
   import { fetchFileText } from "../lib/dufs/client";
   import { renderMarkdownSafe } from "../lib/sanitize/markdown";
+  import { enhanceMarkdown } from "../lib/preview/markdownEnhance";
   import type { PathItem } from "../lib/dufs/types";
 
   type Matcher = (name: string) => boolean;
@@ -128,7 +129,7 @@
     {#if expanded}
       <div class="content">
         {#if html}
-          <div class="prose">{@html html}</div>
+          <div class="prose" use:enhanceMarkdown={picked}>{@html html}</div>
         {:else}
           <pre class="mono-block">{text}</pre>
         {/if}

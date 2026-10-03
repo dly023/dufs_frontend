@@ -1,3 +1,4 @@
+import { rootPath } from "../lib/root.svelte";
 const KEY = "dufs-trash";
 
 export interface TrashEntry {
@@ -56,8 +57,10 @@ class TrashStore {
 
 export const trash = new TrashStore();
 
-/** Root trash directory used on the server. */
-export const TRASH_DIR = "/.trash/";
+/** Trash directory on the server, at the top of the served tree (honours --path-prefix). */
+export function trashDir(): string {
+  return `${rootPath()}.trash/`;
+}
 
 export function genTrashId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();

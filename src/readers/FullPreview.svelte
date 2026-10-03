@@ -117,6 +117,7 @@
               {item}
               {mode}
               {content}
+              onNavigate={(it) => { direction = 0; onNavigate(it); }}
               variant="full"
             />
           </div>

@@ -1,4 +1,5 @@
 import { dirName, ensureTrailingSlash, pathFromLocation } from "../lib/models/path";
+import { clampToRoot } from "../lib/root.svelte";
 import { scrollMemory } from "../stores/scrollMemory";
 import { places } from "../stores/places.svelte";
 import type { ViewMode } from "../stores/prefs.svelte";
@@ -56,8 +57,9 @@ export function writeUrl(opts: {
   else history.pushState(null, "", next);
 }
 
-export function navigateTo(path: string, opts?: { isReturn?: boolean }) {
-  const p = ensureTrailingSlash(path);
+export function navigateTo(path: string) {
+  // Never leave the tree dufs serves (it may be mounted under --path-prefix).
+  const p = clampToRoot(ensureTrailingSlash(path));
   // Remember previous folder scroll position if leaving
   if (directory.path && directory.path !== p) {
     const mainEl = document.querySelector<HTMLElement>(".main");

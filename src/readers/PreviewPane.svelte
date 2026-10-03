@@ -115,6 +115,7 @@
           {item}
           {mode}
           {content}
+          {onNavigate}
           variant="pane"
         />
       </div>
