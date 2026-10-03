@@ -31,3 +31,6 @@ HANDOFF.md
 
 # Build output
 dist/
+
+# Local smoke-test scripts
+.smoke/

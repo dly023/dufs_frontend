@@ -1,4 +1,35 @@
-import { uploadFileXhr, resumeUploadXhr, probeUploadOffset } from "../lib/dufs/client";
+import { uploadFileXhr, resumeUploadXhr, probeUploadOffset, dufsFetch } from "../lib/dufs/client";
+
+const VERIFY_BYTES = 64 * 1024;
+
+async function sameBytes(url: string, file: File, from: number, to: number): Promise<boolean> {
+  if (to <= from) return true;
+  const resp = await dufsFetch(url, { headers: { Range: `bytes=${from}-${to - 1}` } });
+  const body = new Uint8Array(await resp.arrayBuffer());
+  // A server that ignores Range answers 200 with the whole file.
+  const remote = resp.status === 206 ? body : body.subarray(from, to);
+  const local = new Uint8Array(await file.slice(from, to).arrayBuffer());
+  if (remote.length !== local.length) return false;
+  for (let i = 0; i < local.length; i += 1) if (remote[i] !== local[i]) return false;
+  return true;
+}
+
+/**
+ * Is what the server holds (its first `offset` bytes) really the beginning of
+ * *this* file? Compares the head and the bytes just before the break point.
+ * Without this, retrying onto a same-named older file would append our tail to
+ * its content — a silently corrupted file reported as "done".
+ */
+async function serverHoldsOurPrefix(url: string, file: File, offset: number): Promise<boolean> {
+  if (offset <= 0) return true;
+  try {
+    const head = Math.min(offset, VERIFY_BYTES);
+    if (!(await sameBytes(url, file, 0, head))) return false;
+    return await sameBytes(url, file, Math.max(head, offset - VERIFY_BYTES), offset);
+  } catch {
+    return false;
+  }
+}
 
 export type UploadStatus = "queued" | "uploading" | "done" | "error" | "canceled";
 
@@ -122,7 +153,12 @@ class UploadsStore {
       this.pump();
       return;
     }
-    if (offset > item.size) offset = 0; // stale bytes from a different file: restart
+    // Bytes on the server must be ours before we build on them; otherwise
+    // start over with a full PUT (which replaces whatever is there).
+    if (offset > item.size || !(await serverHoldsOurPrefix(item.url, item.file, offset))) {
+      this.start(item);
+      return;
+    }
     if (offset === item.size) {
       // Already complete (e.g. the "failure" was the connection dropping after
       // the last byte): verify nothing, mark done.
