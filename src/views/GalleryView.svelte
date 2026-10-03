@@ -4,6 +4,8 @@
   import { directory } from "../stores/directory.svelte";
   import { selection } from "../stores/selection.svelte";
   import { isImageExt } from "../lib/models/exts";
+  import { actionUploadDataTransfer } from "../actions/files";
+  import { ensureTrailingSlash } from "../lib/models/path";
   import { itemEvents, nearEnd } from "./itemEvents";
   import type { PathItem } from "../lib/dufs/types";
 
@@ -40,6 +42,8 @@
     onFull: (item) => onFullPreview(item),
     onContextMenu: (e, item) => onContextMenu(e, item),
     onComic: (item) => onComic(item),
+    onDropInto: (folder, dt) => void actionUploadDataTransfer(dt, ensureTrailingSlash(`${folder.fullpath}/`)),
+    canDrop: () => directory.allowUpload,
   });
 </script>
 

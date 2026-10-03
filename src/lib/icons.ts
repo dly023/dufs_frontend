@@ -62,6 +62,8 @@ export const ICONS = {
   skipForward: '<path d="m5 4 10 8-10 8Z"/><path d="M19 5v14"/>',
   font: '<path d="M4 20 10 4h1l6 16M6.4 14h8.2"/><path d="M18 9.5v10.5M15.5 9.5h5"/>',
   captions: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10.5 10.2a2.2 2.2 0 1 0 0 3.6M17 10.2a2.2 2.2 0 1 0 0 3.6"/>',
+  filePlus: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M12 12v6M9 15h6"/>',
+  symlink: '<path d="M9 15 15 9"/><path d="M11 6.5 12.6 4.9a4.2 4.2 0 0 1 6 6L17 12.5M13 17.5l-1.6 1.6a4.2 4.2 0 0 1-6-6L7 11.5"/>',
 } as const;
 
 export type IconName = keyof typeof ICONS;

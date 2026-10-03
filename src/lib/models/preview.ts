@@ -1,6 +1,7 @@
 import type { PathItem } from "../dufs/types";
 import {
   previewableImageExts,
+  viewerOnlyImageExts,
   previewableVideoExts,
   previewableAudioExts,
   isNovelPreviewExt,
@@ -32,7 +33,7 @@ const previewableFontExts = new Set(["ttf", "ttc", "otf", "otc", "woff", "woff2"
 export function detectPreviewMode(item: PathItem | null | undefined): PreviewMode {
   if (!item || item.is_dir) return "none";
   const ext = item.ext.toLowerCase();
-  if (previewableImageExts.has(ext)) return "image";
+  if (previewableImageExts.has(ext) || viewerOnlyImageExts.has(ext)) return "image";
   if (previewableVideoExts.has(ext)) return "video";
   if (previewableAudioExts.has(ext)) return "audio";
   if (ext === "pdf") return "pdf";

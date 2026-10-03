@@ -75,7 +75,9 @@ async function probe(path: string): Promise<FolderProbe> {
     const child = shape(await fetchDirectory(ensureTrailingSlash(`${first.fullpath}/`)));
     if (isChapter(child)) return { ...base, comic: "series", count: own.dirs.length, cover: coverOf(child) };
   }
-  return { ...base, comic: null, count: 0, cover: own.images.length ? coverOf(own) : null };
+  // A stray picture in a folder of documents shouldn't become its face.
+  const mostlyImages = own.images.length * 2 >= own.files.length && own.images.length > 0;
+  return { ...base, comic: null, count: 0, cover: mostlyImages ? coverOf(own) : null };
 }
 
 class FolderProbes {

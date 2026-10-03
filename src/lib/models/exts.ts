@@ -4,6 +4,32 @@ export const previewableImageExts = new Set([
   "jpg", "jpeg", "png", "gif", "webp", "avif", "bmp", "svg", "heic", "heif",
 ]);
 
+/** Formats no mainstream browser decodes: the viewer shows a calm card, never a broken image. */
+export const undecodableImageExts = new Set([
+  "psd", "psb", "cr2", "cr3", "crw", "nef", "nrw", "arw", "srf", "sr2", "dng", "raf", "orf", "rw2",
+  "pef", "srw", "x3f", "raw", "rwl", "3fr", "kdc", "dcr", "mrw", "erf", "mos", "iiq",
+]);
+
+/**
+ * Opened in the image viewer but not thumbnailed in listings: either never
+ * decodable, or decodable only in some browsers (Safari: TIFF, JPEG XL) —
+ * the viewer falls back to the card at runtime when decoding fails.
+ */
+export const viewerOnlyImageExts = new Set([...undecodableImageExts, "tif", "tiff", "jxl"]);
+
+const IMAGE_FORMAT_NAMES: Record<string, string> = {
+  heic: "HEIC", heif: "HEIF", psd: "Photoshop", psb: "Photoshop (大文档)", tif: "TIFF", tiff: "TIFF",
+  jxl: "JPEG XL", avif: "AVIF", webp: "WebP", svg: "SVG", bmp: "BMP", gif: "GIF",
+};
+
+/** Human format name for an image extension ("相机 RAW (NEF)" for camera raws). */
+export function imageFormatName(ext: string): string {
+  const e = ext.toLowerCase();
+  if (IMAGE_FORMAT_NAMES[e]) return IMAGE_FORMAT_NAMES[e];
+  if (undecodableImageExts.has(e)) return `相机 RAW（${e.toUpperCase()}）`;
+  return e.toUpperCase();
+}
+
 export const previewableVideoExts = new Set([
   "mp4", "webm", "mkv", "mov", "m4v",
 ]);

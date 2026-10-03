@@ -6,8 +6,10 @@
   interface Props {
     item: PathItem;
     alt?: string;
+    /** The browser couldn't decode it (e.g. HEIC in Chrome); the host can show a glyph instead. */
+    onfail?: () => void;
   }
-  let { item, alt }: Props = $props();
+  let { item, alt, onfail }: Props = $props();
   let loaded = $state(false);
   let errored = $state(false);
   let blobSrc = $state<string | null>(null);
@@ -74,7 +76,10 @@
     loading="lazy"
     decoding="async"
     onload={() => (loaded = true)}
-    onerror={() => (errored = true)}
+    onerror={() => {
+      errored = true;
+      onfail?.();
+    }}
     class:is-loaded={loaded}
   />
 {:else if !errored}

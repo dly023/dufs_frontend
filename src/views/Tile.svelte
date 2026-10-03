@@ -23,7 +23,13 @@
   let { item, variant, selected, current = false, flash = false, index }: Props = $props();
 
   const kind = $derived(fileKind(item.ext, item.is_dir));
-  const showImage = $derived(!item.is_dir && isImageExt(item.ext) && variant !== "row");
+  /** Thumbnail the browser failed to decode (e.g. HEIC in Chrome): fall back to the glyph. */
+  let thumbFailed = $state(false);
+  $effect(() => {
+    void item.fullpath;
+    thumbFailed = false;
+  });
+  const showImage = $derived(!item.is_dir && isImageExt(item.ext) && variant !== "row" && !thumbFailed);
   /** Search results carry a relative path in `name`; show the leaf. */
   const label = $derived(item.filename || item.name);
   const where = $derived(item.name.includes("/") ? item.name.slice(0, item.name.lastIndexOf("/")) : "");
@@ -80,7 +86,7 @@
   <button class="hit" type="button" data-act="open" aria-label={label} title={item.name}></button>
 
   {#if showImage}
-    <div class="media"><LazyImage {item} /></div>
+    <div class="media"><LazyImage {item} onfail={() => (thumbFailed = true)} /></div>
   {:else if comic}
     <!-- A comic folder's icon is its "read" button: cover/book at rest, play on approach. -->
     <button class="glyph folder is-comic" class:has-cover={!!cover} type="button" data-act="comic" title={readHint}>
@@ -98,7 +104,7 @@
   {/if}
 
   <div class="text">
-    <span class="name ellipsis">{label}{#if fresh}<span class="fresh" title="上次来过之后有新内容"></span>{/if}</span>
+    <span class="name ellipsis">{#if item.is_symlink}<span class="link-badge" title="符号链接"><Icon name="symlink" size={11} stroke={2.25} /></span>{/if}{label}{#if fresh}<span class="fresh" title="上次来过之后有新内容"></span>{/if}</span>
     {#if variant !== "media"}<span class="meta ellipsis num">{meta}</span>{/if}
   </div>
 
@@ -466,6 +472,43 @@
       opacity: 1;
       transform: none;
     }
+  }
+
+  /* Symlinks: a small resident mark before the name. */
+  .link-badge {
+    display: inline-flex;
+    vertical-align: -1px;
+    margin-right: 4px;
+    color: var(--accent-text);
+  }
+
+  /* OS files dragged over a folder: it lights up and says what will happen. */
+  .tile:global(.is-drop-target) {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring);
+  }
+
+  .tile:global(.is-drop-target)::after {
+    content: "松开，上传到这里";
+    position: absolute;
+    z-index: 3;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    padding: 3px 8px;
+    border-radius: var(--r-sm);
+    background: var(--inverse);
+    color: var(--inverse-text);
+    font-size: var(--fs-1);
+    white-space: nowrap;
+    transform: translateX(-50%);
+    pointer-events: none;
+    animation: fade-in var(--t-2) var(--ease);
+  }
+
+  /* The page-level "drop here" overlay steps aside while a folder is targeted. */
+  :global(html.drop-into-folder .drop-overlay) {
+    opacity: 0;
   }
 
   /* ── Checkbox + hover tools ── */

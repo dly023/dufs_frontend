@@ -9,7 +9,10 @@ import { trash } from "./stores/trash.svelte";
 import { selection } from "./stores/selection.svelte";
 import * as client from "./lib/dufs/client";
 import { setupAuthLinksInterceptor } from "./lib/dufs/authLinks";
+import { applySiteConfig } from "./lib/config";
 
+// Site config (window.__DUFS_CONFIG__) seeds defaults before the first paint.
+applySiteConfig(prefs);
 applyTheme(prefs.theme);
 // Re-attach saved credentials before the first directory fetch.
 auth.restore();

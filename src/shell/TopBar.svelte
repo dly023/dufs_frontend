@@ -8,6 +8,7 @@
   import { places } from "../stores/places.svelte";
   import { uploads } from "../stores/uploads.svelte";
   import { navigateTo } from "../actions/navigate";
+  import { actionNewFile } from "../actions/files";
   import { crumbsOf, dirName } from "../lib/models/path";
   import type { IconName } from "../lib/icons";
   import { localFilter } from "../stores/filter.svelte";
@@ -183,6 +184,12 @@
     <Dropdown title="更多" align="end" width={216}>
       {#snippet trigger()}<Icon name="more" size={17} />{/snippet}
       {#snippet children(close)}
+        {#if directory.allowUpload}
+          <button class="menu-item" type="button" onclick={() => (close(), void actionNewFile())}>
+            <Icon name="filePlus" />新建文本文件
+          </button>
+          <div class="menu-sep"></div>
+        {/if}
         <button class="menu-item" type="button" onclick={() => (close(), p.onRefresh())}>
           <Icon name="refresh" />刷新<span class="hint">R</span>
         </button>

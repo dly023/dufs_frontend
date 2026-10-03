@@ -17,6 +17,10 @@ export interface ItemEventOptions {
   onContextMenu: (e: MouseEvent, item: PathItem) => void;
   /** Read a folder as a comic straight from its parent. */
   onComic?: (item: PathItem) => void;
+  /** OS files dropped onto a folder tile/row go into that folder. */
+  onDropInto?: (folder: PathItem, dt: DataTransfer) => void;
+  /** Whether dropping is allowed right now (e.g. upload permission). */
+  canDrop?: () => boolean;
 }
 
 function linkOf(item: PathItem): string {
@@ -50,6 +54,19 @@ export function itemEvents(o: ItemEventOptions) {
   let pressTimer: ReturnType<typeof setTimeout> | undefined;
   let pressed = false;
   let pressAt = { x: 0, y: 0 };
+
+  // Drop target: the folder under the pointer while OS files are dragged over.
+  let dropEl: HTMLElement | null = null;
+  function setDropTarget(el: HTMLElement | null) {
+    if (dropEl === el) return;
+    dropEl?.classList.remove("is-drop-target");
+    dropEl = el;
+    el?.classList.add("is-drop-target");
+    // Lets the page-level "drop to upload here" overlay step aside for the folder.
+    document.documentElement.classList.toggle("drop-into-folder", !!el);
+  }
+  const draggingFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes("Files");
+  const dropEnabled = (e: DragEvent) => !!o.onDropInto && draggingFiles(e) && (o.canDrop?.() ?? true);
 
   function flashDone(el: HTMLElement) {
     el.classList.add("is-done");
@@ -126,6 +143,32 @@ export function itemEvents(o: ItemEventOptions) {
       if (e.pointerType !== "mouse" && Math.hypot(e.clientX - pressAt.x, e.clientY - pressAt.y) > 8) {
         clearTimeout(pressTimer);
       }
+    },
+    ondragover(e: DragEvent) {
+      if (!dropEnabled(e)) return;
+      const el = (e.target as Element).closest<HTMLElement>("[data-dir]");
+      setDropTarget(el);
+      if (el) {
+        e.preventDefault();
+        e.dataTransfer!.dropEffect = "copy";
+      }
+    },
+    ondragleave(e: DragEvent) {
+      const to = e.relatedTarget as Node | null;
+      if (dropEl && (!to || !dropEl.contains(to))) setDropTarget(null);
+    },
+    ondrop(e: DragEvent) {
+      setDropTarget(null);
+      if (!dropEnabled(e)) return;
+      const hit = lookup(e);
+      if (!hit?.item.is_dir) return; // not on a folder: the page-level drop handles it
+      e.preventDefault();
+      e.stopPropagation();
+      // Read the DataTransfer now — it is only accessible during this event.
+      o.onDropInto!(hit.item, e.dataTransfer!);
+      // The app's drop handler won't see this event; a data-less drop resets
+      // its drag counter so the page overlay can't get stuck.
+      document.querySelector(".app")?.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true }));
     },
     onpointerover(e: PointerEvent) {
       if (e.pointerType !== "mouse") return;

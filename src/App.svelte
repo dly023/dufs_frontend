@@ -13,6 +13,8 @@
   import ShareDialog from "./components/ShareDialog.svelte";
   import EditDialog from "./components/EditDialog.svelte";
   import ReadmeCard from "./components/ReadmeCard.svelte";
+  import SiteFooter from "./components/SiteFooter.svelte";
+  import { siteConfig } from "./lib/config";
   import CommandPalette from "./components/CommandPalette.svelte";
   import ShortcutsDialog from "./components/ShortcutsDialog.svelte";
   import ConfirmDialog from "./components/ConfirmDialog.svelte";
@@ -74,7 +76,8 @@
 
   // ── Page title: says where you are and what is happening ──
   $effect(() => {
-    const host = location.host;
+    // The configured site name stands in for the host as the "where am I" suffix.
+    const site = siteConfig.title ?? location.host;
     const here = dirName(directory.path);
     let main = here;
     if (previewItem || paneItem) {
@@ -90,7 +93,7 @@
       main = `已选 ${selection.size} 项 · ${here}`;
     }
     const prefix = uploads.inFlight ? `↑ ${Math.round(uploads.overallProgress * 100)}% · ` : "";
-    document.title = `${prefix}${main} — ${host}`;
+    document.title = `${prefix}${main} — ${site}`;
   });
 
   // Typing in search narrows the current listing instantly; server search
@@ -491,12 +494,20 @@
       else openPlace({ path, name: decodeURIComponent(path.split("/").pop() ?? path), isDir: false });
     };
     window.addEventListener("dufs:open-path", onOpenPath);
+    // A newly created file opens straight in the editor.
+    const onEditPath = (e: Event) => {
+      const path = (e as CustomEvent<{ path: string }>).detail?.path;
+      const it = directory.sortedPaths.find((p) => p.fullpath === path);
+      if (it) editItem = it;
+    };
+    window.addEventListener("dufs:edit-path", onEditPath);
     window.addEventListener("popstate", onPop);
     window.addEventListener("keydown", onKey);
     window.addEventListener("paste", onPaste);
     mq.addEventListener("change", onMq);
     return () => {
       window.removeEventListener("dufs:open-path", onOpenPath);
+      window.removeEventListener("dufs:edit-path", onEditPath);
       window.removeEventListener("popstate", onPop);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("paste", onPaste);
@@ -591,6 +602,7 @@
             <ListView {...viewProps} />
           {/if}
           {#if !directory.search}<ReadmeCard />{/if}
+          {#if siteConfig.footer}<SiteFooter markdown={siteConfig.footer} />{/if}
         {/if}
       </main>
 
@@ -630,9 +642,9 @@
 {#if dragging}
   <div class="drop-overlay">
     <div>
-      <Icon name="upload" size={28} />
-      <strong>松开即可上传</strong>
-      <span>到「{dirName(directory.path)}」</span>
+      <Icon name="upload" size={16} />
+      <strong>松开上传到「{dirName(directory.path)}」</strong>
+      {#if directory.allowUpload && directory.sortedPaths.some((p) => p.is_dir)}<span>· 拖到文件夹上可直接传入</span>{/if}
     </div>
   </div>
 {/if}

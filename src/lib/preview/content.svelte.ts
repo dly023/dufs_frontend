@@ -5,6 +5,7 @@ import { renderMarkdownSafe } from "../sanitize/markdown";
 import { auth } from "../../stores/auth.svelte";
 import { formatSize } from "../models/format";
 import { highlightJson } from "../highlight/json";
+import { undecodableImageExts } from "../models/exts";
 
 /** One JSON Lines record, pretty-printed and (when small enough) coloured. */
 export interface JsonlRecord {
@@ -64,7 +65,9 @@ export function createPreviewContent(getItem: () => PathItem | null) {
     loading = true;
     (async () => {
       try {
-        if (mode === "image" || mode === "video" || mode === "audio" || mode === "pdf" || mode === "font") {
+        if (mode === "image" && undecodableImageExts.has(item.ext.toLowerCase())) {
+          // Only a "can't display" card is shown: don't pull the whole file.
+        } else if (mode === "image" || mode === "video" || mode === "audio" || mode === "pdf" || mode === "font") {
           src = auth.isAuthed ? await fetchBlobUrl(item.fullpath) : item.fullpath;
         } else if (mode === "markdown") {
           const raw = await readText(item);

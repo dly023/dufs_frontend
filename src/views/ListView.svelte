@@ -5,6 +5,8 @@
   import { prefs, type SortColumn } from "../stores/prefs.svelte";
   import { fileKind } from "../lib/models/exts";
   import { formatRelative, formatSize, formatTimestamp } from "../lib/models/format";
+  import { actionUploadDataTransfer } from "../actions/files";
+  import { ensureTrailingSlash } from "../lib/models/path";
   import { itemEvents, nearEnd } from "./itemEvents";
   import EmptyListing from "./EmptyListing.svelte";
   import { folderProbes, probeFolder } from "../stores/folderProbe.svelte";
@@ -38,6 +40,8 @@
     onFull: (item) => onFullPreview(item),
     onContextMenu: (e, item) => onContextMenu(e, item),
     onComic: (item) => onComic(item),
+    onDropInto: (folder, dt) => void actionUploadDataTransfer(dt, ensureTrailingSlash(`${folder.fullpath}/`)),
+    canDrop: () => directory.allowUpload,
   });
 
   const columns: { id: SortColumn; label: string; cls: string }[] = [
@@ -101,6 +105,7 @@
         <button class="c-name hit" type="button" data-act="open" title={item.name}>
           <span class="glyph" class:folder={item.is_dir} style:--hue={kind.hue}><Icon name={probe?.comic ? "bookOpen" : probe?.kind === "video" ? "film" : probe?.kind === "audio" ? "music" : probe?.kind === "document" ? "fileText" : kind.icon} size={15} /></span>
           <span class="ellipsis">{item.name}</span>
+          {#if item.is_symlink}<span class="link-badge" title="符号链接"><Icon name="symlink" size={12} stroke={2.25} /></span>{/if}
         </button>
         {#if probe?.comic}
           <button class="read" type="button" data-act="comic" title={probe.comic === "series" ? "从第一话开始连读" : "按顺序连读这个文件夹的图片"}>
@@ -230,6 +235,28 @@
   .row.is-selected::before,
   .row.is-selected + .row::before {
     opacity: 0;
+  }
+
+  .link-badge {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: var(--accent-text);
+  }
+
+  .row:global(.is-drop-target) {
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  .row:global(.is-drop-target) .c-name::after {
+    content: "松开，上传到这里";
+    margin-left: var(--s-2);
+    padding: 1px 7px;
+    border-radius: var(--r-sm);
+    background: var(--inverse);
+    color: var(--inverse-text);
+    font-size: var(--fs-1);
+    white-space: nowrap;
   }
 
   .row.is-selected {

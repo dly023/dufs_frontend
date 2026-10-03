@@ -3,7 +3,8 @@
  * durations elsewhere. Colors are OKLCH so light/dark share one hue logic.
  */
 :root {
-  /* ── Hue ── one knob for the whole accent family */
+  /* ── Hue ── one knob for the whole accent family
+     (overridable per deployment: window.__DUFS_CONFIG__.accentHue → inline --accent-h) */
   --accent-h: 215;
   --neutral-h: 255;
 

@@ -4,6 +4,8 @@
   import type { PreviewMode } from "../lib/models/preview";
   import type { createPreviewContent } from "../lib/preview/content.svelte";
   import { enhanceMarkdown } from "../lib/preview/markdownEnhance";
+  import { undecodableImageExts } from "../lib/models/exts";
+  import UnsupportedImage from "./UnsupportedImage.svelte";
 
   interface Props {
     item: PathItem;
@@ -25,6 +27,13 @@
   const html = $derived(content.html);
   const loading = $derived(content.loading);
   const error = $derived(content.error);
+
+  /** The browser could not decode this image (e.g. HEIC/TIFF outside Safari). */
+  let imageFailed = $state(false);
+  $effect(() => {
+    void item.fullpath;
+    imageFailed = false;
+  });
 
   const JSONL_PAGE = 50;
   let jsonlLimit = $state(JSONL_PAGE);
@@ -58,7 +67,11 @@
 {:else if error}
   <p class="hint is-error">{error}</p>
 {:else if mode === "image"}
-  {#if src}<img class="media {variant}" {src} alt={item.name} />{/if}
+  {#if undecodableImageExts.has(item.ext.toLowerCase()) || imageFailed}
+    <UnsupportedImage {item} />
+  {:else if src}
+    <img class="media {variant}" {src} alt={item.name} onerror={() => (imageFailed = true)} />
+  {/if}
 {:else if mode === "video"}
   {#if src}{#await loadVideo() then m}<m.default {item} {src} {variant} />{/await}{/if}
 {:else if mode === "audio"}

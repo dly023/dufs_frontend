@@ -6,6 +6,7 @@ import {
   invalidateDirectoryCache,
   moveItem,
   pathExists,
+  saveFile,
 } from "../lib/dufs/client";
 import { auth } from "../stores/auth.svelte";
 import { directory } from "../stores/directory.svelte";
@@ -132,10 +133,15 @@ export async function actionUploadDataTransfer(dt: DataTransfer, basePath?: stri
       const entry = (it as any).webkitGetAsEntry?.();
       if (entry) roots.push(entry);
     }
-    const out: UploadEntry[] = [];
-    await Promise.all(roots.map((e) => readEntryRecursive(e, "", out)));
-    await actionUploadEntries(out, basePath);
-    return;
+    // Some sources yield no entries (webkitGetAsEntry → null); fall back to
+    // the flat file list instead of silently uploading nothing.
+    if (roots.length) {
+      const files = Array.from(dt.files ?? []);
+      const out: UploadEntry[] = [];
+      await Promise.all(roots.map((e) => readEntryRecursive(e, "", out)));
+      if (out.length || !files.length) return actionUploadEntries(out, basePath);
+      return actionUploadFiles(files, basePath);
+    }
   }
   if (dt.files?.length) await actionUploadFiles(dt.files, basePath);
 }
@@ -154,6 +160,51 @@ export async function actionNewFolder() {
     await reloadDir();
   } catch (e) {
     toasts.error(e instanceof Error ? e.message : "创建失败");
+  }
+}
+
+/**
+ * Create an empty text file in the current folder and hand it to the editor
+ * (via a `dufs:edit-path` window event the app listens for).
+ */
+export async function actionNewFile(): Promise<PathItem | null> {
+  let suggested = "未命名.txt";
+  for (;;) {
+    const raw = await dialogs.prompt({
+      title: "新建文本文件",
+      message: "输入文件名，创建后直接打开编辑",
+      promptLabel: "文件名",
+      promptDefault: suggested,
+      confirmText: "创建",
+    });
+    if (raw === null) return null;
+    const name = raw.trim();
+    const taken = new Set(directory.paths.map((p) => p.name));
+    let problem = "";
+    if (!name) problem = "文件名不能为空";
+    else if (/[\\/]/.test(name)) problem = "文件名不能包含 / 或 \\";
+    else if (taken.has(name)) problem = `「${name}」已存在`;
+    if (!problem) {
+      const path = directory.path + encodeURIComponent(name);
+      try {
+        // A file created elsewhere since the listing loaded must not be clobbered.
+        if (await pathExists(path)) {
+          toasts.error(`「${name}」已存在`);
+          suggested = name;
+          continue;
+        }
+        await saveFile(path, "");
+      } catch (e) {
+        toasts.error(e instanceof Error ? e.message : "创建失败");
+        return null;
+      }
+      await reloadDir();
+      const item = directory.sortedPaths.find((p) => p.fullpath === path) ?? null;
+      window.dispatchEvent(new CustomEvent("dufs:edit-path", { detail: { path } }));
+      return item;
+    }
+    toasts.error(problem);
+    suggested = name || "未命名.txt";
   }
 }
 

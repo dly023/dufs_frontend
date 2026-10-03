@@ -43,7 +43,12 @@ export interface UploadItem {
   status: UploadStatus;
   error?: string;
   file: File;
+  /** Smoothed transfer rate while uploading (bytes/s). */
+  speed?: number;
 }
+
+/** Speed is an EMA with a ~2 s time constant: steady, yet quick to react. */
+const SPEED_TAU_MS = 2000;
 
 const CONCURRENCY = 3;
 let seq = 0;
@@ -51,6 +56,7 @@ let seq = 0;
 class UploadsStore {
   items = $state<UploadItem[]>([]);
   private abortHooks = new Map<string, () => void>();
+  private samples = new Map<string, { t: number; b: number }>();
   private waiters: (() => void)[] = [];
 
   get total() {
@@ -68,6 +74,29 @@ class UploadsStore {
   get inFlight() {
     return this.activeCount > 0 || this.queuedCount > 0;
   }
+  /** Combined rate of everything uploading right now (bytes/s). */
+  get overallSpeed() {
+    return this.items.reduce((s, i) => (i.status === "uploading" ? s + (i.speed ?? 0) : s), 0);
+  }
+  /** Bytes sent / to send across the live batch (queued, uploading, done). */
+  get batchBytes() {
+    let loaded = 0;
+    let total = 0;
+    for (const i of this.items) {
+      if (i.status === "error" || i.status === "canceled") continue;
+      loaded += i.loaded;
+      total += i.size;
+    }
+    return { loaded, total };
+  }
+  /** Seconds left at the current rate, or null while it can't be estimated. */
+  get etaSeconds(): number | null {
+    const speed = this.overallSpeed;
+    if (speed <= 0) return null;
+    const { loaded, total } = this.batchBytes;
+    return Math.max(0, (total - loaded) / speed);
+  }
+
   get overallProgress() {
     const total = this.items.reduce((s, i) => s + i.size, 0);
     const loaded = this.items.reduce((s, i) => s + i.loaded, 0);
@@ -97,7 +126,28 @@ class UploadsStore {
     return ids;
   }
 
+  /** Progress sample: updates `loaded` and the smoothed speed. */
+  private progress(id: string, loaded: number, size?: number) {
+    const now = performance.now();
+    const last = this.samples.get(id);
+    this.samples.set(id, { t: now, b: loaded });
+    const prev = this.items.find((i) => i.id === id)?.speed ?? 0;
+    let speed = prev;
+    if (last && now > last.t) {
+      const dt = now - last.t;
+      const inst = ((loaded - last.b) / dt) * 1000;
+      // Seed with the first measurement; smoothing a ramp up from 0 under-reads.
+      speed = prev === 0 ? Math.max(0, inst) : prev + (1 - Math.exp(-dt / SPEED_TAU_MS)) * (Math.max(0, inst) - prev);
+    }
+    this.patch(id, size ? { loaded, size, speed } : { loaded, speed });
+  }
+
   private patch(id: string, patch: Partial<UploadItem>) {
+    // Leaving the "uploading" state ends the rate sample.
+    if (patch.status && patch.status !== "uploading") {
+      this.samples.delete(id);
+      patch = { ...patch, speed: 0 };
+    }
     this.items = this.items.map((i) => (i.id === id ? { ...i, ...patch } : i));
   }
 
@@ -119,7 +169,7 @@ class UploadsStore {
     this.patch(id, { status: "uploading", error: undefined });
     let aborted = false;
     const xhr = uploadFileXhr(item.url, item.file, {
-      onProgress: (loaded, total) => this.patch(id, { loaded, size: total || item.size }),
+      onProgress: (loaded, total) => this.progress(id, loaded, total || item.size),
       onDone: () => {
         this.patch(id, { status: "done", loaded: item.size });
         this.abortHooks.delete(id);
@@ -168,7 +218,7 @@ class UploadsStore {
     }
     let aborted = false;
     const xhr = resumeUploadXhr(item.url, item.file, offset, {
-      onProgress: (loaded) => this.patch(id, { loaded: Math.max(offset, loaded) }),
+      onProgress: (loaded) => this.progress(id, Math.max(offset, loaded)),
       onDone: () => {
         this.patch(id, { status: "done", loaded: item.size });
         this.abortHooks.delete(id);

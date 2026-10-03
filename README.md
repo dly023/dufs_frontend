@@ -22,6 +22,28 @@ dufs /data --allow-all --assets ./dist
 
 dufs injects `__ASSETS_PREFIX__` / `__INDEX_DATA__`; `after-build.js` prepares the placeholders.
 
+## Configuration
+
+Branding without a rebuild: edit the deployed `dist/index.html` and define `window.__DUFS_CONFIG__`
+in a `<script>` before the app bundle (a commented example ships in `index.html`). Every key is optional;
+invalid values are ignored with one console warning.
+
+```html
+<script>
+  window.__DUFS_CONFIG__ = {
+    title: "我的网盘",          // replaces the host at the end of the tab title: "photos — 我的网盘"
+    accentHue: 215,             // 0–360, OKLCH hue; the whole accent family follows (buttons, selection, focus)
+    footer: "[京ICP备XXXXXXXX号-X](https://beian.miit.gov.cn/)", // Markdown, quiet footer under every listing
+    defaultView: "gallery",     // "gallery" | "grid" | "list" — until the visitor picks one
+    defaultTheme: "system",     // "system" | "light" | "dark" | "oled" — until the visitor picks one
+  };
+</script>
+```
+
+Defaults never override a visitor's saved choice and are not persisted, so changing them later still reaches
+visitors who never chose. The site title stays in the tab title only — the UI itself names the root 根目录, so a
+long brand never competes with the path. The favicon keeps the dufs wordmark.
+
 ## Layout
 
 ```

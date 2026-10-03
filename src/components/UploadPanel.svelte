@@ -1,6 +1,19 @@
 <script lang="ts">
   import { uploads } from "../stores/uploads.svelte";
   import Icon from "./Icon.svelte";
+  import { formatSize } from "../lib/models/format";
+
+  const rate = (bps: number) => `${formatSize(bps)}/s`;
+  /** "约 25 秒" / "约 3 分钟" / "约 1 小时 20 分" — rounded the way people say it. */
+  function eta(sec: number): string {
+    if (sec < 3) return "即将完成";
+    if (sec < 10) return `约 ${Math.ceil(sec)} 秒`;
+    if (sec < 60) return `约 ${Math.ceil(sec / 5) * 5} 秒`;
+    const min = Math.round(sec / 60);
+    if (min < 60) return `约 ${min} 分钟`;
+    const h = Math.floor(min / 60);
+    return `约 ${h} 小时${min % 60 ? ` ${min % 60} 分` : ""}`;
+  }
 
   const pct = (n: number) => Math.round(Math.max(0, Math.min(1, n)) * 100);
   const failed = $derived(uploads.items.filter((it) => it.status === "error").length);
@@ -39,6 +52,16 @@
       {/if}
     </header>
 
+    {#if uploads.inFlight}
+      {@const b = uploads.batchBytes}
+      {@const left = uploads.etaSeconds}
+      <p class="summary num">
+        已传 {formatSize(b.loaded)} / {formatSize(b.total)}
+        {#if uploads.overallSpeed > 0} · {rate(uploads.overallSpeed)}{/if}
+        {#if left !== null} · {eta(left)}{/if}
+      </p>
+    {/if}
+
     {#if !collapsed}
       <ul>
         {#each uploads.items as it (it.id)}
@@ -54,6 +77,7 @@
               {:else if it.status === "queued"}
                 等待中
               {:else}
+                {#if it.speed}<span class="rate">{rate(it.speed)}</span>{/if}
                 {pct(it.size ? it.loaded / it.size : 0)}%
               {/if}
             </span>
@@ -145,6 +169,18 @@
     border-radius: 50%;
     background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--fill-strong) 0);
     mask: radial-gradient(circle, transparent 5px, black 5.5px);
+  }
+
+  .summary {
+    margin: -6px 0 0;
+    padding: 0 var(--s-4) var(--s-2);
+    color: var(--text-3);
+    font-size: var(--fs-1);
+  }
+
+  .rate {
+    margin-right: 6px;
+    color: var(--text-3);
   }
 
   ul {
