@@ -108,7 +108,7 @@
     <p class="meta num">{formatSize(item.size)} · {formatTimestamp(item.mtime)}</p>
   </div>
 
-  <div class="body" class:is-media={mode === "image" || mode === "video"}>
+  <div class="body" class:is-media={mode === "image" || mode === "video"} class:is-image={mode === "image"}>
     {#key item.fullpath}
       <div class="swap">
         <PreviewBody
@@ -181,9 +181,12 @@
     background: var(--fill);
   }
 
-  /* Transparent images sit on a quiet checkerboard. */
   .body.is-media {
     display: flex;
+  }
+
+  /* Transparent images sit on a quiet checkerboard; video gets a plain stage. */
+  .body.is-image {
     background-color: var(--fill);
     background-image: conic-gradient(var(--fill-strong) 25%, transparent 0 50%, var(--fill-strong) 0 75%, transparent 0);
     background-size: 16px 16px;

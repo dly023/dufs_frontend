@@ -60,6 +60,7 @@ export const ICONS = {
   play: '<path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5Z"/>',
   skipBack: '<path d="M19 20 9 12l10-8Z"/><path d="M5 19V5"/>',
   skipForward: '<path d="m5 4 10 8-10 8Z"/><path d="M19 5v14"/>',
+  font: '<path d="M4 20 10 4h1l6 16M6.4 14h8.2"/><path d="M18 9.5v10.5M15.5 9.5h5"/>',
   captions: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10.5 10.2a2.2 2.2 0 1 0 0 3.6M17 10.2a2.2 2.2 0 1 0 0 3.6"/>',
 } as const;
 

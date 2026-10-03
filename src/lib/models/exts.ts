@@ -61,6 +61,8 @@ export function fileKind(ext: string, isDir = false): FileKind {
   const e = ext.toLowerCase();
   const label = (e || "file").slice(0, 4).toUpperCase();
   if (e === "pdf") return { icon: "fileText", label, hue: 25 };
+  if (["ttf", "otf", "woff", "woff2", "ttc", "otc"].includes(e)) return { icon: "font", label, hue: 20 };
+  if (["srt", "vtt", "ass", "ssa"].includes(e)) return { icon: "captions", label, hue: 300 };
   switch (getFileCategory(e)) {
     case "image":
       return { icon: "images", label, hue: 215 };
