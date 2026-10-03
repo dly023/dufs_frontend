@@ -5,6 +5,7 @@ import {
   getToken,
   invalidateDirectoryCache,
   moveItem,
+  pathExists,
 } from "../lib/dufs/client";
 import { auth } from "../stores/auth.svelte";
 import { directory } from "../stores/directory.svelte";
@@ -32,11 +33,39 @@ interface UploadEntry {
 
 async function runUploads(entries: UploadEntry[], basePath: string) {
   if (!entries.length) return;
-  const ids = uploads.enqueue(entries, basePath);
+  // Preflight: skip files that already exist (ask once, apply to the rest).
+  const conflicts = (
+    await Promise.all(
+      entries.map(async (e) => ((await pathExists(basePath + e.relPath.split("/").map(encodeURIComponent).join("/"))) ? e : null)),
+    )
+  ).filter((e): e is UploadEntry => !!e);
+  let skip = new Set<UploadEntry>();
+  if (conflicts.length) {
+    let mode: "overwrite" | "skip" | "all" | "skip-all" | null = null;
+    for (let i = 0; i < conflicts.length; i += 1) {
+      if (mode !== "all" && mode !== "skip-all") {
+        mode = await dialogs.conflict({
+          title: "文件已存在",
+          message: "服务器上已有同名文件。",
+          itemLabel: conflicts[i].relPath,
+          remaining: conflicts.length - i,
+        });
+        if (mode === null) return; // cancelled: the whole batch stops
+      }
+      if (mode === "skip" || mode === "skip-all") skip.add(conflicts[i]);
+    }
+  }
+  const toUpload = entries.filter((e) => !skip.has(e));
+  if (!toUpload.length) {
+    if (skip.size) toasts.push(`已跳过 ${skip.size} 个已存在文件`);
+    return;
+  }
+  const ids = uploads.enqueue(toUpload, basePath);
   await uploads.whenIdle();
   const mine = uploads.items.filter((i) => ids.includes(i.id));
   const ok = mine.filter((i) => i.status === "done").length;
   const failed = mine.filter((i) => i.status === "error").length;
+  if (skip.size) toasts.push(`已跳过 ${skip.size} 个已存在文件`);
   if (ok) toasts.success(`已上传 ${ok} 个文件`);
   if (failed) toasts.error(`${failed} 个文件上传失败`);
   await reloadDir();
@@ -260,8 +289,29 @@ export async function actionMoveItems(items: PathItem[]) {
   const base = ensureTrailingSlash(dest.trim());
   const moved: [string, string][] = [];
   let n = 0;
+  let skipped = 0;
+  let mode: "overwrite" | "skip" | "all" | "skip-all" | null = null;
   for (const item of items) {
     const target = base + encodeURIComponent(item.name);
+    // Same-path moves are a no-op; probing them would "conflict" with itself.
+    if (target !== item.fullpath) {
+      const exists = await pathExists(target).catch(() => false);
+      if (exists) {
+        if (mode !== "all" && mode !== "skip-all") {
+          mode = await dialogs.conflict({
+            title: "目标已存在",
+            message: "目标目录里已有同名项，移动将覆盖它。",
+            itemLabel: target,
+            remaining: items.length - moved.length - skipped,
+          });
+          if (mode === null) break; // cancelled: stop, keep what moved so far
+        }
+        if (mode === "skip" || mode === "skip-all") {
+          skipped += 1;
+          continue;
+        }
+      }
+    }
     try {
       await moveItem(item.fullpath, target);
       moved.push([target, item.fullpath]);
@@ -270,6 +320,7 @@ export async function actionMoveItems(items: PathItem[]) {
       toasts.error(e instanceof Error ? e.message : `移动失败: ${item.name}`);
     }
   }
+  if (skipped) toasts.push(`已跳过 ${skipped} 个已存在项`);
   if (n) {
     toasts.success(`已移动 ${n} 项`, { label: "撤销", handler: () => void undoMove(moved) });
   }

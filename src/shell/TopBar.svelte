@@ -11,6 +11,8 @@
   import { crumbsOf, dirName } from "../lib/models/path";
   import type { IconName } from "../lib/icons";
   import { localFilter } from "../stores/filter.svelte";
+  import SearchSuggest from "../components/SearchSuggest.svelte";
+
 
   interface Props {
     onUpload: () => void;
@@ -26,6 +28,7 @@
   }
   let p: Props = $props();
 
+  let suggestOpen = $state(false);
   let draft = $state("");
   let searchEl = $state<HTMLInputElement>();
   let filterTimer = 0;
@@ -143,6 +146,8 @@
       enterkeyhint="search"
       placeholder={prefs.searchScope === "global" ? "搜索全站" : "搜索此目录"}
       aria-label="搜索"
+      onfocus={() => (suggestOpen = true)}
+      onblur={() => setTimeout(() => (suggestOpen = false), 150)}
     />
     <button
       class="scope"
@@ -151,8 +156,10 @@
       onclick={toggleScope}
     >{prefs.searchScope === "global" ? "全站" : "此目录"}</button>
     <kbd class="kbd">/</kbd>
+    {#if suggestOpen}
+      <SearchSuggest query={draft} />
+    {/if}
   </form>
-
   <div class="actions">
     {#if directory.allowUpload}
       <button class="btn btn-primary upload" type="button" title="上传文件（也可拖拽或粘贴）" onclick={p.onUpload}>
@@ -321,6 +328,7 @@
 
   /* ── Search ── */
   .search {
+    position: relative;
     flex: 0 1 320px;
     min-width: 0;
     display: flex;

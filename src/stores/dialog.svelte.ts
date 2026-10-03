@@ -1,4 +1,4 @@
-export type DialogKind = "confirm" | "prompt";
+export type DialogKind = "confirm" | "prompt" | "conflict";
 
 export interface DialogRequest {
   id: number;
@@ -10,6 +10,9 @@ export interface DialogRequest {
   danger?: boolean;
   promptLabel?: string;
   promptDefault?: string;
+  /** conflict dialog */
+  itemLabel?: string;
+  remaining?: number;
   resolve: (value: string | boolean | null) => void;
 }
 
@@ -44,18 +47,36 @@ class DialogStore {
     promptDefault?: string;
     confirmText?: string;
   }): Promise<string | null> {
-    return new Promise((resolve) => {
-      this.current = {
-        id: ++seq,
-        kind: "prompt",
-        title: opts.title,
-        message: opts.message,
-        promptLabel: opts.promptLabel,
-        promptDefault: opts.promptDefault,
-        confirmText: opts.confirmText,
-        resolve: (v) => resolve(typeof v === "string" ? v : null),
-      };
-    });
+    const { promise, resolve } = Promise.withResolvers<string | null>();
+    this.current = {
+      id: ++seq,
+      kind: "prompt",
+      title: opts.title,
+      message: opts.message,
+      promptLabel: opts.promptLabel,
+      promptDefault: opts.promptDefault,
+      confirmText: opts.confirmText,
+      resolve: (v) => resolve(typeof v === "string" ? v : null),
+    };
+    return promise;
+  }
+
+  /**
+   * Conflict resolution for uploads/moves. Resolves:
+   * "overwrite" | "skip" | "all" (overwrite all) | "skip-all" | null (cancel).
+   */
+  conflict(opts: { title: string; message: string; itemLabel: string; remaining: number }): Promise<"overwrite" | "skip" | "all" | "skip-all" | null> {
+    const { promise, resolve } = Promise.withResolvers<"overwrite" | "skip" | "all" | "skip-all" | null>();
+    this.current = {
+      id: ++seq,
+      kind: "conflict",
+      title: opts.title,
+      message: opts.message,
+      itemLabel: opts.itemLabel,
+      remaining: opts.remaining,
+      resolve: (v) => resolve(v as "overwrite" | "skip" | "all" | "skip-all" | null),
+    };
+    return promise;
   }
 
   close(value: string | boolean | null) {

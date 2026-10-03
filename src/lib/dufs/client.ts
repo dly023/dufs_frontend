@@ -260,6 +260,17 @@ export async function getToken(fullpath: string, isDir: boolean): Promise<string
 
 export type TextEncoding = "utf-8" | "utf-16le" | "utf-16be" | "gb18030";
 
+
+/** Does this path already exist? (HEAD probe; 404 = no.) */
+export async function pathExists(fullpath: string): Promise<boolean> {
+  try {
+    const resp = await dufsFetch(fullpath, { method: "HEAD" });
+    return resp.ok;
+  } catch (e) {
+    if (e instanceof DufsHttpError && e.status === 404) return false;
+    throw e;
+  }
+}
 /**
  * Decode file bytes the way people actually store text: BOMs first, then strict
  * UTF-8, then GB18030 (a superset of GBK/GB2312 — most legacy Chinese .txt).
